@@ -1,0 +1,84 @@
+!!!xml1.0
+
+-sample_qty = 'sample.qty_label'
+-partner_type = 'sample.partner_type'
+
+~openerp
+    ~data noupdate='0'
+
+        // common quantities
+
+        ~record model=sample_qty #two_oz
+            @name: 2 oz
+            @common eval='True'
+
+        ~record model=sample_qty #four_oz
+            @name: 4 oz
+            @common eval='True'
+
+        // mail message subtypes
+
+        ~record model='mail.message.subtype' #mt_sample_request_draft
+            @name: Request Created
+            @res_model: sample.request
+            @default eval='False'
+            @sequence eval='1'
+            @description: Sample request created.
+
+        ~record model='mail.message.subtype' #mt_sample_request_new
+            @name: Request Submitted
+            @res_model: sample.request
+            @default eval='True'
+            @sequence eval='5'
+            @description: Sample request submitted.
+
+        ~record model='mail.message.subtype' #mt_sample_request_production
+            @name: Request in Production
+            @res_model: sample.request
+            @default eval='False'
+            @sequence eval='11'
+            @description: Sample request being produced.
+
+        ~record model='mail.message.subtype' #mt_sample_request_ready
+            @name: Request Ready to Ship
+            @res_model: sample.request
+            @default eval='False'
+            @sequence eval='21'
+            @description: Sample request is ready to ship.
+
+        ~record model='mail.message.subtype' #mt_sample_request_transiting
+            @name: Request in Transit
+            @res_model: sample.request
+            @default eval='False'
+            @sequence eval='31'
+            @description: Sample request is on it's way.
+
+        ~record model='mail.message.subtype' #mt_sample_request_received
+            @name: Request Received
+            @res_model: sample.request
+            @default eval='True'
+            @sequence eval='41'
+            @description: Sample request has been received.
+
+
+    ~data noupdate='1'
+
+        // initial partner segments
+
+        ~record model=partner_type #sample_partner_filter_all_customers
+            @name: All Customers
+            @default eval='1'
+            @partner_domain: [('is_company','=',1),('customer','=',1)]
+            @active eval='1'
+
+        ~record model=partner_type #sample_partner_filter_all_vendors
+            @name: All Vendors
+            @default eval='0'
+            @partner_domain: [('is_company','=',1),('supplier','=',1)]
+            @active eval='1'
+
+        ~record model=partner_type #sample_partner_filter_all_other
+            @name: All Other
+            @default eval='0'
+            @partner_domain: [('is_company','=',1),('customer','=',0),('supplier','=',0)]
+            @active eval='1'

@@ -1,0 +1,21 @@
+!!! xml1.0
+~openerp
+    ~data
+
+        ~record model='ir.ui.view' #view_partners_form_sample_request
+            @name: view.res.partner.form.sample.request
+            @model: res.partner
+            @inherit_id ref='base.view_partner_form'
+            @priority eval='18'
+            @arch type='xml'
+                ~page @page_history position='before'
+                    ~page $Sample_Requests
+                        ~group
+                            ~separator $Active_Requests
+                            ~button name='%(sample_request_history_action)d' type='action' $History .oe_right context="{'search_default_partner_id': active_id}" 
+                        @sample_request_ids nolabel='1'
+                            ~tree
+                                @user_id
+                                @contact_name $Contact
+                                @create_date
+                                @state

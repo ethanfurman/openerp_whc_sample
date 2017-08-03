@@ -1,0 +1,32 @@
+!!!xml1.0
+~openerp
+    ~data
+
+        ~record #view_sample_request_config_settings model='ir.ui.view'
+            @name: sample.request.config.settings
+            @model: sample.request.config.settings
+            @arch type='xml'
+                ~form $Configure_Sample_Default_Followers version='7.0' .oe_form_configuration
+                    ~header
+                        ~button $Apply type='object' @execute .oe_highlight
+                        or
+                        ~button $Cancel type='object' @cancel .oe_link
+                    ~group groups='base.group_multi_company'
+                        ~div
+                            ~label for='company_id' $Select_Company
+                            @company_id widget='selection' on_change='onchange_company_id(company_id, context)' .oe_inline
+                    ~separator $Sample_Configuration
+                    ~group col='4'
+                        ~div
+                            ~div
+                                ~label for='sample_request_followers'
+                                @sample_request_followers
+
+        ~record #action_sample_request_config model='ir.actions.act_window'
+            @name: Configure Sample_Default Followers
+            @type: ir.actions.act_window
+            @res_model: sample.request.config.settings
+            @view_mode: form
+            @target: inline
+
+        ~menuitem #menu_sample_request_config name='Sample' parent='base.menu_config' sequence='29' action='action_sample_request_config'

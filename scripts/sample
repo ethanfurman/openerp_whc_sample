@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+from collections import defaultdict
+from dbf import Date
+from openerplib import get_connection, get_records, AttrDict
+from sample import split_label
+from scription import *
+import os
+
+CONFIG = '/etc/openerp/fnx.ini'
+
+try:
+    settings = OrmFile(CONFIG, section='openerp')
+except Exception:
+    print('WARNING: unable to process configfile; all parameters must be specified', verbose=0)
+    HOST = ''
+    USER = ''
+    DB = ''
+    PW = ''
+else:
+    HOST = settings.host
+    USER = settings.user
+    DB = settings.db
+    PW = settings.pw
+
+@Script(
+        host=Spec('host where OpenERP instance is running', OPTION, default=HOST),
+        db=Spec('database to use', OPTION, default=DB),
+        user=Spec('login name to use', OPTION, default=USER),
+        pw=Spec('password for login name', OPTION),
+        )
+def main(host, db, user, pw):
+    if host:
+        module.HOST = host
+    if db:
+        module.DB = db
+    if user:
+        module.USER = user
+    if pw:
+        module.PW = pw
+    for req in ('HOST', 'USER', 'DB', 'PW'):
+        if not module[req]:
+            raise SystemExit('%r required; use --help for more info' % req)
+
+
+@Command(
+        shipper=Spec('the shipping company used to send the package', type=unicode.lower),
+        tracking=Spec('the tracking number assigned to the package', ),
+        date=Spec('date package arrived [YYYY-mm-dd]', OPTION, type=Date.fromymd),
+        by=Spec('package delivered to whom', OPTION, type=unicode.title),
+        )
+def receive(shipper, tracking, date, by):
+    """
+    update the date and received-by fields for sample shipments
+    """
+    if not date and not by:
+        abort('must specify at least one of [ DATE | BY ]')
+    connect_oe()
+    fields = OE.sample_request.fields_view_get()['fields']
+    shippers = set([s.split('_')[0] for s, n in fields['actual_ship']['selection']])
+    print('found shippers:', shippers)
+    if shipper not in shippers:
+        abort('shipper %r not found (possibilities: %s)' % (shipper, ', '.join([s.upper() for s in shippers])))
+    records = get_records(
+            OE.sample_request,
+            domain=[('tracking','=',tracking)],
+            fields=['id', 'actual_ship', 'user_id', 'partner_id', 'julian_date_code', 'invoice', 'production_order'],
+            )
+    if len(records) > 1:
+        template = '{user_id[1]:<20} | {partner_id[1]:<30.30} | {julian_date_code:>7} | {invoice:>8} | {production_order:>11}'
+        print('multiple records found for %r:' % tracking, file=stderr)
+        print('-' * 90, file=stderr)
+        print(template.format(
+            user_id=(0, 'user'),
+            partner_id=(0, 'partner'),
+            julian_date_code='julian',
+            invoice='invoice',
+            production_order='prod order',
+            ), file=stderr)
+        print('-' * 90, file=stderr)
+        for record in records:
+            print(
+                template.format(**record),
+                file=stderr,
+                )
+        print('-' * 90, file=stderr)
+        abort('')
+    for record in records:
+        if not record.actual_ship.startswith(shipper):
+            print('shipper on record (%r) does not match %s' % (record.actual_ship, shipper.upper()), file=stderr)
+        data = {}
+        if date:
+            data['received_datetime'] = str(date)
+        if by:
+            data['received_by'] = by
+        OE.sample_request.write(record.id, data)
+
+
+@Command(
+        dry_run=('show results, do not update', FLAG),
+        fix_errors=('make reasonable guesses on error input', FLAG),
+        )
+def fix_qty_label(dry_run, fix_errors):
+    """
+    normalize qty_label field (e.g. 4-2oz. -> 4 - 2 oz)
+    """
+    connect_oe()
+    qty_label = OE.conn.get_model('sample.qty_label')
+    records = get_records(qty_label, fields=['id', 'name'])
+    canonical = {}
+    reassignment = {}
+    duplicates = []
+    for rec in records:
+        if rec.name.replace(' ', '').isalpha():
+            # just words, leave as-is
+            continue
+        label = split_label(rec.name, not fix_errors)
+        if 'error' in label:
+            print('%-20s  <- %s' % (label, rec.name), file=stderr)
+            continue
+        if dry_run or script_verbosity:
+            echo('%-20s  <- %s' % (label, rec.name))
+        id = canonical.setdefault(label, rec.id)
+        reassignment[rec.id] = id
+        if rec.id != id:
+            duplicates.append(rec.id)
+        if rec.name != label and not dry_run:
+            qty_label.write(rec.id, {'name': label})
+    sample_product = OE.conn.get_model('sample.product')
+    records = get_records(sample_product, fields=['id', 'qty_id'])
+    updates = defaultdict(list)
+    for rec in records:
+        qty_id = reassignment.get(rec.qty_id and rec.qty_id[0] or 0)
+        if qty_id is not None:
+            updates[qty_id].append(rec.id)
+    for qty_id, change_ids in updates.items():
+        if dry_run:
+            echo(qty_id, '->', change_ids)
+        else:
+            sample_product.write(change_ids, {'qty_id': qty_id})
+    if not dry_run:
+        qty_label.unlink(duplicates)
+
+
+@Command(
+        filename=('file to store results in', ),
+        reset=('start with clean file', FLAG),
+        )
+def snapshot(filename, reset):
+    "generate text file of sample products by request id / product id / qty name"
+    if not os.path.exists(filename):
+        reset = True
+    connect_oe()
+    sample_product = OE.conn.get_model('sample.product')
+    records = sorted(get_records(sample_product), key=lambda r: r.id)
+    if not reset:
+        with open(filename) as f:
+            lines = f.read().strip().split('\n')
+    with open(filename, 'w') as f:
+        i = -1
+        for rec in records:
+            i += 1
+            qty = rec.qty_id and rec.qty_id[1] or ''
+            if reset:
+                line = '%5d, %-15s' % (rec.id, qty)
+            else:
+                line = lines[i] + ', %5d, %-15s' % (rec.id, qty)
+            f.write(line + '\n')
+
+
+OE = AttrDict()
+
+def connect_oe():
+    OE.conn = conn = get_connection(hostname=HOST, database=DB, login=USER, password=PW)
+    OE.res_partner = conn.get_model('res.partner')
+    OE.res_users = conn.get_model('res.users')
+    OE.sample_request = conn.get_model('sample.request')
+
+Main()

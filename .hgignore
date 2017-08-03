@@ -1,0 +1,6 @@
+syntax: glob
+*.xml
+*.pyc
+.*.swp
+*~
+.*~

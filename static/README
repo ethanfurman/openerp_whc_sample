@@ -1,0 +1,2 @@
+This file exists solely to have this directory exist after an 'hg clone';
+otherwise, OpenERP will not load controllers.
