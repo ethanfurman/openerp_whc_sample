@@ -10,70 +10,37 @@
             @name: sample.request.form
             @model: sample.request
             @arch type='xml'
-                ~form $Sample_Request version='7.0' setup='onload(send_to, user_id, contact_id, partner_id, context)'
+                ~form $Sample_Request version='7.0'
+                    // setup='onload(user_id, contact_id, partner_id, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
                         @state widget='statusbar'
-                        ~h2
-                            @rush .oe_highlight .oe_text_center .oe_bold attrs="{'invisible': ['|',('rush','=',False),('state','in',['complete','cancelled'])], 'readonly':True}"
                     @id invisible='1'
+                    @ref_num invisible='1'
                     @partner_is_company invisible='1'
                     ~span
                         @printer_friendly .oe_right .oe_edit_hide nolabel='1' style='text-align: right !important'
+                    ~div .oe_title
+                        ~h1
+                            @ref_name attrs="{'invisible': [('id','=',False)]}"
                     ~group col='5'
                         ~group colspan='2'
-                            @department widget='radio' writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @user_id readonly="1" options="{'limit':15, 'create':0, 'create_edit':0}"
-                            @for_user_id $On_behalf_of writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" options="{'limit':15, 'create':0, 'create_edit':0}"
                             @create_date readonly='1' $Created_on attrs="{'invisible': [('id','=',False)]}"
-                            ~label for='target_date_type' string='Samples Must'
-                            ~div colspan='1'
-                                @target_date_type .oe_inline writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                                on
-                                @target_date .oe_inline writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                                ~span .oe_edit_hide attrs="{'invisible': [('ship_early','=',False)]}": (or earlier)
-                            @ship_early .oe_edit_only
-                            @send_to on_change='onchange_send_to(send_to, user_id, contact_id, partner_id, request_ship, context)' widget='radio' writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                            @partner_type $Company_Filter widget='selection' on_change='onchange_partner_type(partner_type, partner_id, context)' options="{'limit':15, 'create':0, 'create_edit':0}"
-                            @partner_id on_change='onchange_partner_id(send_to, user_id, contact_id, partner_id, context)' options="{'limit':15, 'create':0, 'create_edit':0}" domain="['|','|',('xml_id','!=',False),('customer','=',1),('user_ids','!=',False)]" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'show_fis': True, 'active_test': False}"
-                            @contact_id on_change='onchange_contact_id(send_to, user_id, contact_id, partner_id, context)' options="{'limit':10, 'create':0, 'create_edit':1}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'default_parent_id':partner_id, 'combine_company':False}"
+                            @partner_id on_change='onchange_partner_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':15, 'create':0, 'create_edit':0}" domain="['|','|',('xml_id','!=',False),('customer','=',1),('user_ids','!=',False),('module','!=','CSMSBS')]" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'show_fis': True, 'active_test': False}"
+                            @contact_id on_change='onchange_contact_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':10, 'create':0, 'create_edit':1}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'default_parent_id':partner_id, 'combine_company':False}"
+                            @ship_to_id on_change='onchange_ship_to_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':15, 'create':0, 'create_edit':1, 'no_open': True}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" context="{'default_ship_to_parent_id':partner_id, 'combine_company':False}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                         ~group colspan='3'
                             @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @address_type widget='radio' options="{'horizontal':1}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                            @address widget='text'
-                            @ice writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                            @third_party_account writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                            ~hr colspan='2'
-                            @rep_time widget='float_time'
+                            @address $Ship_To_Address widget='text'
+                            @third_party_account $Customer_Account_No writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     ~hr
                     ~label for='product_ids'
                     @product_ids nolabel='1' context="{'tree_view_ref': 'sample.sample_product_list_full'}"
                     ~hr
                     ~group
-                        @prep_time writeonly="groups('sample.group_sample_user')" widget='float_time'
-                        @finish_date $Finish_Date writeonly="groups('sample.group_sample_user,sample.group_sample_picking')"
-                    ~notebook
-                        ~page string='General'
-                            ~label for='instructions'
                             @instructions writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                        ~page string='Labeling'
-                            ~group
-                                ~group
-                                    @invoice writeonly="groups('sample.group_sample_user')"
-                                    @julian_date_code writeonly="groups('sample.group_sample_user')"
-                                    @production_order writeonly="groups('sample.group_sample_user')"
-                        ~page string='Shipping'
-                            ~group
-                                ~group
-                                    @actual_ship writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')"
-                                    @actual_ship_date writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')"
-                                ~group
-                                    @shipping_cost widget='monetary' writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')"
-                                    @tracking .oe_edit_only writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')" attrs="{'readonly': [('actual_ship','=',False)]}"
-                                    @tracking_url .oe_edit_hide widget='url'
-                                ~group
-                                    @received_by writeonly="groups('base.group_sale_salesman,sample.group_sample_user,sample.group_sample_shipping')"
-                                    @received_datetime writeonly="groups('base.group_sale_salesman,sample.group_sample_user,sample.group_sample_shipping')"
                     ~div .oe_chatter
                         @message_follower_ids widget='mail_followers'
                         @message_ids widget='mail_thread' nolabel='1'
@@ -82,8 +49,7 @@
             @name: sample.request.list
             @model: sample.request
             @arch type='xml'
-                ~tree $Sample_Request colors='red:rush!=False'
-                    @rush invisible='1'
+                ~tree $Sample_Request
                     @create_date
                     @contact_id
                     @partner_id
@@ -122,25 +88,7 @@
 
         ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sample_request_action'
 
-        ~record model=view #sample_partner_type_form
-            @name: sample.partner_type.form
-            @model: sample.partner_type
-            @arch type='xml'
-                ~tree $Sample_Partner_Type editable='bottom'
-                    @active
-                    @name
-                    @partner_domain
-                    @default
-
-        ~record model=act_window #sample_partner_type_action
-            @name: Partner Segmentation
-            @res_model: sample.partner_type
-            @view_type: form
-            @view_mode: tree
-            @view_id ref='sample_partner_type_form'
-
         ~menuitem @Samples sequence='99' parent='base.menu_base_config' groups='base.group_sale_manager' #menu_sample_config
-        ~menuitem @Partner_Segmentation parent='menu_sample_config' #menu_sample_config_partner_segmentation action='sample_partner_type_action'
 
         ~record model=view #sample_product_list_full
             @name: sample.product.list
@@ -149,12 +97,10 @@
             @arch type='xml'
                 ~tree $Products editable='bottom'
                     @request_state invisible='1'
-                    @qty_id options="{'create':true, 'create_edit':false, 'limit':15, 'no_open':True}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     @product_id options="{'create':false, 'create_edit':false, 'limit':15}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     @product_lot_requested writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     ~button @button_same_lot_no string="▶" .oe_edit_only type='object' attrs="{'invisible': ['|','|',('request_state','!=','production'),('product_lot_requested','=',False),('product_lot_used','!=', False)]}"
                     @product_lot_used writeonly="groups('sample.group_sample_user,sample.group_sample_picker')"
-                    @product_cost sum='Total Cost' widget='monetary' groups='base.group_sale_salesman'
 
         ~record model=view #sample_product_list
             @name: sample.product.list
@@ -162,14 +108,12 @@
             @priority eval='10'
             @arch type='xml'
                 ~tree $Products editable='bottom'
-                    @qty_id options="{'create':true, 'create_edit':false, 'limit':15, 'no_open':True}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     @product_id options="{'create':false, 'create_edit':false, 'limit':15}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     @product_lot_requested writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
 
-        ~menuitem @Samples groups="sample.group_sample_user,sample.group_sample_shipping,sample.group_sample_picking,sample.group_sample_guest" #sample_main
+        ~menuitem @Samples #sample_main
         ~menuitem @Samples sequence='10' parent='sample_main' #sample_sub
         ~menuitem @Samples sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
-        ~menuitem @Partner #menu_sample_partner_type_config parent='sample_sub_config' action='sample_partner_type_action'

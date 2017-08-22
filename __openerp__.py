@@ -22,7 +22,6 @@
         'sample_data.xaml',
         'res_config_view.xaml',
         'res_partner_view.xaml',
-        'wizard/wizard_defaults_view.xaml',
         ],
     'installable': True,
     'application': True,
