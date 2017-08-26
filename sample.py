@@ -59,16 +59,6 @@ class sample_request(osv.Model):
             }
         }
 
-    def _get_pdf(self, cr, uid, ids, field_name, arg, context=None):
-        res = {}
-        if isinstance(ids, (int, long)):
-            ids = [ids]
-        dbname = cr.dbname
-        if ids:
-            for id in ids:
-                res[id] = '<a href="/samplerequest/%s/SampleRequest_%d.pdf">Printer Friendly</a>' % (dbname, id)
-        return res
-
     _columns = {
         'state': fields.selection(
             (
@@ -97,8 +87,6 @@ class sample_request(osv.Model):
         'third_party_account': fields.char('3rd Party Account Number', size=64, track_visibility='onchange'),
         # products to sample
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
-        # link to printer-friendly form
-        'printer_friendly': fields.function(_get_pdf, type='html', store=False),
         }
 
     _defaults = {

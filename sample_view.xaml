@@ -18,8 +18,6 @@
                     @id invisible='1'
                     @ref_num invisible='1'
                     @partner_is_company invisible='1'
-                    ~span
-                        @printer_friendly .oe_right .oe_edit_hide nolabel='1' style='text-align: right !important'
                     ~div .oe_title
                         ~h1
                             @ref_name attrs="{'invisible': [('id','=',False)]}"
@@ -117,3 +115,6 @@
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
+
+        ~report model='sample.request' name='sample.request.report' header='True' auto='True' multi='False' xml='sample/report/sample.xml' xsl='sample/report/sample.xsl' $Sample_Request #report_sample_request_form
+

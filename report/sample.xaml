@@ -1,0 +1,157 @@
+!!! xml1.0
+~sample
+    ~report
+        ~title type='eval' expr="'Sample Request'"
+        ~date type='function' @today
+    ~detail type='fields' @id
+        ~reference type='field' @ref_num
+        ~request-by type='field' @user_id.name
+        ~create-date type='field' @create_date
+        ~submit-date type='field' @submit_datetime
+        ~special-instructions type='field' @instructions
+        ~customer type='field' @partner_id.name
+        ~contact type='field' @contact_name
+        ~address-label type='field' @address
+        ~address-type type='selection' @address_type
+        ~ship-via type='selection' @request_ship
+        ~shipping-account type='field' @third_party_account
+        ~item type='zoom' @product_ids
+            ~code type='field' @product_id.default_code
+            ~name type='field' @product_id.name
+
+!!! xsl1.0
+~xsl:stylesheet version='1.0' xmlns:fo='http://www.w3.org/1999/XSL/Format' xmlns:xsl='http://www.w3.org/1999/XSL/Transform'
+
+    ~xsl:template match='/'
+        ~xsl:apply-templates select='sample'
+
+    ~xsl:template match='sample'
+        ~document
+            ~template author='OpenERP:Sample' title='Sample Request' pageSize='us_letter'
+                ~pageTemplate id='first_page'
+                    ~pageGraphics
+                        ~xsl:apply-templates match='report'
+                    ~xsl:call-template name='first_page_frames'
+                ~pageTemplate id='other_pages'
+                    ~pageGraphics
+                        ~xsl:apply-templates match='report'
+                    ~xsl:call-template name='other_pages_frames'
+            ~stylesheet
+                ~blockTableStyle id='left'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
+                    ~lineStyle kind='LINEBELOW' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
+                ~blockTableStyle id='center'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
+                    ~blockAlignment value='CENTER'
+                ~blockTableStyle id='item-table'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
+                    ~blockAlignment value='LEFT'
+                    ~lineStyle kind='LINEBELOW' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
+                ~blockTableStyle id='border-table'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
+                    ~blockAlignment value='LEFT'
+                    ~lineStyle kind='BOX' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
+                ~paraStyle name='nospace' fontName='Courier' fontSize='9' spaceAfter='0' spaceBefore='0'
+            ~story
+                ~setNextTemplate name='other_pages'
+                ~xsl:apply-templates match='report' mode='story'
+                ~xsl:apply-templates select='detail'
+
+    ~xsl:template name='first_page_frames'
+        ~frame id='customer' x1='0.75in' y1='8.5in' width='3.375in' height='1.75in'
+        ~frame id='shipping' x1='4.25in' y1='8.5in' width='3.5in' height='1.75in'
+        ~frame id='details1' x1='0.75in' y1='0.75in' width='7.0in' height='7.5in'
+
+    ~xsl:template name='other_pages_frames'
+        ~frame id='details2' x1='0.75in' y1='0.75in' width='7.0in' height='9.0in'
+
+    ~xsl:template match='report'
+        ~setFont name='Helvetica' size='12'
+        ~drawString x='0.5in' y='10.5in'
+            ~xsl:value-of select='title'
+        ~setFont name='Helvetica' size='10'
+        ~drawCentredString x='4.25in' y='10.7in'
+            ~xsl:value-of select='//corporate-header/corporation/name'
+        ~setFont name='Helvetica' size='12'
+        ~drawRightString x='8.0in' y='10.5in'
+            ~xsl:value-of select='date'
+        ~setFont name='Helvetica' size='8'
+        ~drawCentredString x='4.25in' y='0.43in'
+            ~xsl:value-of select='//corporate-header/corporation/rml_header1'
+        ~drawCentredString x='4.25in' y='0.3in'
+            ~xsl:value-of select='//corporate-header/corporation/rml_footer'
+
+    ~xsl:template match='detail'
+        ~blockTable colWidths='72, 171' style='left'
+            ~tr
+                ~td
+                    ~xsl:text: Reference #
+                ~td
+                    ~xsl:value-of select='reference'
+            ~tr
+                ~td
+                    ~xsl:text: Request by:
+                ~td
+                    ~xsl:value-of select='request-by'
+            ~tr
+                ~td
+                    ~xsl:text: Created on:
+                ~td
+                    ~xsl:value-of select='create-date'
+            ~tr
+                ~td
+                    ~xsl:text: Customer
+                ~td
+                    ~xsl:value-of select='customer'
+            ~tr
+                ~td
+                    ~xsl:text: Contact
+                ~td
+                    ~xsl:value-of select='contact'
+        ~nextFrame
+        ~blockTable colWidths='99, 162' style='left'
+            ~tr
+                ~td
+                    ~xsl:text: Ship via:
+                ~td
+                    ~xsl:value-of select='ship-via'
+            ~tr
+                ~td
+                    ~xsl:text: Address Type:
+                ~td
+                    ~xsl:value-of select='address-type'
+            ~tr
+                ~td
+                    ~xsl:text: Customer Account #:
+                ~td
+                    ~xsl:value-of select='shipping-account'
+            ~tr
+                ~td
+                    ~xsl:text: Shipping Address
+                ~td
+                    ~xsl:value-of select='address-label'
+        ~nextFrame
+        ~blockTable colWidths='7in' style='border-table'
+            ~tr
+                ~td
+                    ~xsl:text: Special Instructions:
+            ~tr
+                ~td
+                    ~xsl:value-of select='special-instructions'
+        ~spacer length='0.25in'
+        ~blockTable colWidths='2in, 5in' style='item-table'
+            ~tr
+                ~td
+                    ~xsl:text: FIS ID
+                ~td
+                    ~xsl:text: Product
+            ~xsl:for-each select='item'
+                ~tr
+                    ~td
+                        ~xsl:value-of select='code'
+                    ~td
+                        ~xsl:value-of select='name'

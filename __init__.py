@@ -2,10 +2,10 @@
 
 # import all modules in this package here
 
-__all__ = ['sample', 'company', 'res_config', 'controllers', 'res_partner', 'wizard']
+__all__ = ['sample', 'company', 'res_config', 'report', 'res_partner']
 
 import sample
 import company
 import res_config
-import controllers
 import res_partner
+import report
