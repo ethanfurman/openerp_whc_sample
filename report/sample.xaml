@@ -37,6 +37,9 @@
                         ~xsl:apply-templates match='report'
                     ~xsl:call-template name='other_pages_frames'
             ~stylesheet
+                ~blockTableStyle id='container'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
                 ~blockTableStyle id='left'
                     ~blockFont name='Helvetica' size='9'
                     ~blockValign value='TOP'
@@ -62,9 +65,7 @@
                 ~xsl:apply-templates select='detail'
 
     ~xsl:template name='first_page_frames'
-        ~frame id='customer' x1='0.75in' y1='8.5in' width='3.375in' height='1.75in'
-        ~frame id='shipping' x1='4.25in' y1='8.5in' width='3.5in' height='1.75in'
-        ~frame id='details1' x1='0.75in' y1='0.75in' width='7.0in' height='7.5in'
+        ~frame id='details1' x1='0.75in' y1='0.75in' width='7.0in' height='9.0in'
 
     ~xsl:template name='other_pages_frames'
         ~frame id='details2' x1='0.75in' y1='0.75in' width='7.0in' height='9.0in'
@@ -86,55 +87,59 @@
             ~xsl:value-of select='//corporate-header/corporation/rml_footer'
 
     ~xsl:template match='detail'
-        ~blockTable colWidths='72, 171' style='left'
+        ~blockTable colWidths='218, 32, 290' style='container'
             ~tr
                 ~td
-                    ~xsl:text: Reference #
+                    ~blockTable colWidths='72, 171' style='left'
+                        ~tr
+                            ~td
+                                ~xsl:text: Reference #
+                            ~td
+                                ~xsl:value-of select='reference'
+                        ~tr
+                            ~td
+                                ~xsl:text: Request by:
+                            ~td
+                                ~xsl:value-of select='request-by'
+                        ~tr
+                            ~td
+                                ~xsl:text: Created on:
+                            ~td
+                                ~xsl:value-of select='create-date'
+                        ~tr
+                            ~td
+                                ~xsl:text: Customer
+                            ~td
+                                ~xsl:value-of select='customer'
+                        ~tr
+                            ~td
+                                ~xsl:text: Contact
+                            ~td
+                                ~xsl:value-of select='contact'
                 ~td
-                    ~xsl:value-of select='reference'
-            ~tr
                 ~td
-                    ~xsl:text: Request by:
-                ~td
-                    ~xsl:value-of select='request-by'
-            ~tr
-                ~td
-                    ~xsl:text: Created on:
-                ~td
-                    ~xsl:value-of select='create-date'
-            ~tr
-                ~td
-                    ~xsl:text: Customer
-                ~td
-                    ~xsl:value-of select='customer'
-            ~tr
-                ~td
-                    ~xsl:text: Contact
-                ~td
-                    ~xsl:value-of select='contact'
-        ~nextFrame
-        ~blockTable colWidths='99, 162' style='left'
-            ~tr
-                ~td
-                    ~xsl:text: Ship via:
-                ~td
-                    ~xsl:value-of select='ship-via'
-            ~tr
-                ~td
-                    ~xsl:text: Address Type:
-                ~td
-                    ~xsl:value-of select='address-type'
-            ~tr
-                ~td
-                    ~xsl:text: Customer Account #:
-                ~td
-                    ~xsl:value-of select='shipping-account'
-            ~tr
-                ~td
-                    ~xsl:text: Shipping Address
-                ~td
-                    ~xsl:value-of select='address-label'
-        ~nextFrame
+                    ~blockTable colWidths='99, 162' style='left'
+                        ~tr
+                            ~td
+                                ~xsl:text: Ship via:
+                            ~td
+                                ~xsl:value-of select='ship-via'
+                        ~tr
+                            ~td
+                                ~xsl:text: Address Type:
+                            ~td
+                                ~xsl:value-of select='address-type'
+                        ~tr
+                            ~td
+                                ~xsl:text: Customer Account #:
+                            ~td
+                                ~xsl:value-of select='shipping-account'
+                        ~tr
+                            ~td
+                                ~xsl:text: Shipping Address
+                            ~td
+                                ~xsl:value-of select='address-label'
+        ~spacer length='0.25in'
         ~blockTable colWidths='7in' style='border-table'
             ~tr
                 ~td
