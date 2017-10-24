@@ -11,7 +11,7 @@
             @model: sample.request
             @arch type='xml'
                 ~form $Sample_Request version='7.0'
-                    // setup='onload(user_id, contact_id, partner_id, context)'
+                    // setup='onload(user_id, contact_id, partner_id, ship_to_id, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
                         @state widget='statusbar'
