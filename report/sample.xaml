@@ -76,15 +76,23 @@
             ~xsl:value-of select='title'
         ~setFont name='Helvetica' size='10'
         ~drawCentredString x='4.25in' y='10.7in'
-            ~xsl:value-of select='//corporate-header/corporation/name'
+            ~xsl:text: Whole Herb Company
+        ~drawCentredString x='4.25in' y='10.55in'
+            ~xsl:text: 19800 8th Street East
+        ~drawCentredString x='4.25in' y='10.40in'
+            ~xsl:text: Sonoma, CA  95476
+        ~drawCentredString x='4.25in' y='10.25in'
+            ~xsl:text: USA
         ~setFont name='Helvetica' size='12'
         ~drawRightString x='8.0in' y='10.5in'
             ~xsl:value-of select='date'
         ~setFont name='Helvetica' size='8'
-        ~drawCentredString x='4.25in' y='0.43in'
+        ~drawCentredString x='4.25in' y='0.62in'
             ~xsl:value-of select='//corporate-header/corporation/rml_header1'
-        ~drawCentredString x='4.25in' y='0.3in'
+        ~drawCentredString x='4.25in' y='0.43in'
             ~xsl:value-of select='//corporate-header/corporation/rml_footer'
+        ~drawCentredString x='4.25in' y='0.3in'
+            ~xsl:text: Visit us on the web at: www.wholeherbcompany.com
 
     ~xsl:template match='detail'
         ~blockTable colWidths='218, 32, 290' style='container'
