@@ -216,53 +216,13 @@ class sample_request(osv.Model):
         res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, ship_to_id, context=context)
         return res
 
-    def onchange_partner_type(self, cr, uid, ids, partner_type, partner_id, context=None):
-        res = {'value': {}, 'domain': {}}
-        sample_partner_type = self.pool.get('sample.partner_type')
-        domain = ''
-        if partner_type:
-            # find matching domain
-            partner_type = sample_partner_type.read(cr, SUPERUSER_ID, [('id','=',partner_type)], fields=['partner_domain'], context=context)[0]
-            domain = partner_type['partner_domain']
-        else:
-            # find default domain -- if none, use a default of all company customers
-            default = sample_partner_type.read(cr, SUPERUSER_ID, [('default','=',True)], fields=['name','partner_domain'], context=context)
-            if default:
-                [default] = default
-                domain = default['partner_domain']
-                res['value']['partner_type'] = default['id']
-            else:
-                domain = "[('is_company','=',1),('customer','=',1)]"
-        if partner_id:
-            # ensure current partner meets new domain requirements
-            res_partner = self.pool.get('res.partner')
-            check_partner = eval(domain) + [('id','=',partner_id)]
-            matches = res_partner.search(cr, uid, check_partner, context=context)
-            if not matches:
-                res['value']['partner_id'] = False
-        res['domain']['partner_id'] = domain
-        return res
-
     def onchange_ship_to_id(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
         res = {'value': {}, 'domain': {}}
         res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, ship_to_id, context=context)
         return res
 
-    # def onchange_send_to(self, cr, uid, ids, user_id, contact_id, partner_id, request_ship, context=None):
-    #     res = {'value': {}, 'domain': {}}
-    #     res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, context=context)
-    #     if send_to == 'rep' and not request_ship:
-    #         res['value']['request_ship'] = 'rep'
-    #     elif request_ship == 'rep':
-    #         res['value']['request_ship'] = False
-    #     return res
-
-    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, context=None):
-        partner_id_res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, context=context)
-        partner_type_res = self.onchange_partner_type(cr, uid, ids, 0, partner_id, context=context)
-        res = partner_id_res.copy()
-        res['value'].update(partner_type_res['value'])
-        res['domain'].update(partner_type_res['domain'])
+    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
+        res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=context)
         return res
 
     def unlink(self, cr, uid, ids, context=None):
