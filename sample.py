@@ -223,6 +223,8 @@ class sample_request(osv.Model):
 
     def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
         res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=context)
+        if 'value' in res:
+            del res['value']
         return res
 
     def unlink(self, cr, uid, ids, context=None):
