@@ -74,7 +74,7 @@ class sample_request(osv.Model):
 
     def _get_address(
             self, cr, uid,
-            user_id, contact_id, partner_id,
+            user_id, contact_id, partner_id, ship_to_id,
             request_type, lead_id, lead_company, lead_name,
             context=None,
             ):
@@ -94,6 +94,16 @@ class sample_request(osv.Model):
             partner = res_partner.browse(cr, uid, partner_id, context=context)
             label = partner.name + '\n' + res_partner._display_address(cr, uid, partner, context=context)
         return label
+
+    def _get_phone(self, cr, uid, links, context=None):
+        for table, id in links:
+            if not id:
+                continue
+            table = self.pool.get(table)
+            data = table.read(cr, SUPERUSER_ID, id, fields=['phone'], context=context)
+            if data['phone']:
+                return data['phone']
+        return False
 
     def _get_telephone_nos(self, cr, uid, ids, field_name, arg, context=None):
         res = {}
@@ -286,7 +296,7 @@ class sample_request(osv.Model):
 
     def onchange_lead_id(
             self, cr, uid, ids,
-            user_id, contact_id, partner_id,
+            user_id, contact_id, partner_id, ship_to_id,
             request_type, lead_id, lead_company, lead_name,
             context=None,
             ):
@@ -306,7 +316,7 @@ class sample_request(osv.Model):
             lead_name = res['value']['lead_name'] = False
         res['value']['address'] = self._get_address(
                 cr, uid,
-                user_id, contact_id, partner_id,
+                user_id, contact_id, partner_id, ship_to_id,
                 request_type, lead_id, lead_company, lead_name,
                 context=context,
                 )
@@ -372,7 +382,7 @@ class sample_request(osv.Model):
 
     def onchange_request_type(
             self, cr, uid, ids,
-            user_id, contact_id, partner_id,
+            user_id, contact_id, partner_id, ship_to_id,
             request_type, lead_id, lead_company, lead_name,
             context=None,
             ):
@@ -388,9 +398,10 @@ class sample_request(osv.Model):
             raise ERPError('unknown request type: %r' % (request_type, ))
         res['value']['address'] = self._get_address(
                 cr, uid,
-                user_id, contact_id, partner_id,
+                user_id, contact_id, partner_id, ship_to_id,
                 request_type, lead_id, lead_company, lead_name,
-                context=context)
+                context=context,
+                )
         return res
 
     def onchange_ship_to_id(
@@ -408,8 +419,8 @@ class sample_request(osv.Model):
                 )
         return res
 
-    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
-        res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=context)
+    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context=None):
+        res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context=context)
         if 'value' in res:
             del res['value']
         return res
