@@ -10,7 +10,7 @@
             @name: sample.request.form
             @model: sample.request
             @arch type='xml'
-                ~form $Sample_Request version='7.0' setup='onload(user_id, contact_id, partner_id, ship_to_id, context)'
+                ~form $Sample_Request version='7.0' setup='onload(user_id, contact_id, partner_id, ship_to_id, lead_id, lead_company, lead_name, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
                         @state widget='statusbar'
@@ -23,9 +23,13 @@
                     ~group col='5'
                         ~group colspan='2'
                             @user_id readonly="1" options="{'limit':15, 'create':0, 'create_edit':0}"
+                            @request_type on_change='onchange_request_type(send_to, user_id, contact_id, partner_id, request_type, lead_id, lead_company, lead_name, context)' widget='radio' writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @create_date readonly='1' $Created_on attrs="{'invisible': [('id','=',False)]}"
-                            @partner_id on_change='onchange_partner_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':15, 'create':0, 'create_edit':0}" domain="['|','|',('xml_id','!=',False),('customer','=',1),('user_ids','!=',False),('module','!=','CSMSBS')]" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'show_fis': True, 'active_test': False}"
-                            @contact_id on_change='onchange_contact_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':10, 'create':0, 'create_edit':1}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'default_parent_id':partner_id, 'combine_company':False}"
+                            @partner_id on_change='onchange_partner_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context)' options="{'limit':15, 'create':0, 'create_edit':0}" domain="['|','|',('xml_id','!=',False),('customer','=',1),('user_ids','!=',False),('module','!=','CSMSBS')]" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'show_fis': True, 'active_test': False}" attrs="{'required': ['|',('request_type','=','customer')], 'invisible': [('request_type','!=','customer')]}"
+                            @lead_id attrs="{'required': [('request_type','=','lead')], 'invisible': [('request_type','!=','lead')]}" options="{'create_edit':1}" on_change='onchange_lead_id(send_to, user_id, contact_id, partner_id, request_type, lead_id, lead_company, lead_name, context)' context="{'default_user_id': for_user_id or uid}" domain="['|', ('user_id','=',user_id), ('user_id','=',False)]" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                            @lead_company $Company attrs="{'invisible': [('request_type','!=','lead')]}" readonly='1'
+                            @lead_name attrs="{'invisible': [('request_type','!=','lead')]}" readonly='1'
+                            @contact_id on_change='onchange_contact_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context)' options="{'limit':10, 'create':0, 'create_edit':1}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':['|',('request_type','=','lead'),'&','&',('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" context="{'default_parent_id':partner_id, 'combine_company':False}"
                             @ship_to_id on_change='onchange_ship_to_id(user_id, contact_id, partner_id, ship_to_id, context)' options="{'limit':15, 'create':0, 'create_edit':1, 'no_open': True}" attrs="{'readonly': [('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}" context="{'default_ship_to_parent_id':partner_id, 'combine_company':False}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                         ~group colspan='3'
                             @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
@@ -48,8 +52,8 @@
             @arch type='xml'
                 ~tree $Sample_Request
                     @create_date
-                    @contact_id
-                    @partner_id
+                    @tree_contact
+                    @tree_company
                     @user_id
                     @state
 

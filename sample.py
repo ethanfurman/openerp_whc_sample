@@ -58,6 +58,75 @@ class sample_request(osv.Model):
             'sample.mt_sample_request_complete': lambda s, c, u, r, ctx: r['state'] == 'complete',
             }
         }
+    def _changed_res_partner_phone_ids(res_partner, cr, uid, changed_ids, context=None):
+        #
+        # changed_ids are all the res.partner records with changed phone
+        # numbers; need to return the sample.request record ids that reference
+        # those res.partner records (kept in partner_id and contact_id)
+        #
+        self = res_partner.pool.get('sample.request')
+        ids = self.search(
+                cr, uid,
+                ['|',('partner_id','in',changed_ids),('contact_id','in',changed_ids)],
+                context=context,
+                )
+        return ids
+
+    def _get_address(
+            self, cr, uid,
+            user_id, contact_id, partner_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
+        res_partner = self.pool.get('res.partner')
+        label = False
+        if lead_id:
+            crm_lead = self.pool.get('crm.lead')
+            lead = crm_lead.browse(cr, uid, lead_id, context=context)
+            label = ''
+            if lead_name:
+                label += lead_name + '\n'
+            label += crm_lead._display_address(cr, uid, lead, context=context)
+        elif contact_id:
+            contact = res_partner.browse(cr, uid, contact_id, context=context)
+            label = contact.name + '\n' + res_partner._display_address(cr, uid, contact, context=context)
+        elif partner_id:
+            partner = res_partner.browse(cr, uid, partner_id, context=context)
+            label = partner.name + '\n' + res_partner._display_address(cr, uid, partner, context=context)
+        return label
+
+    def _get_telephone_nos(self, cr, uid, ids, field_name, arg, context=None):
+        res = {}
+        if field_name != 'phone':
+            return res
+        # get changed records
+        for rec in self.browse(cr, uid, ids, context=context):
+            id = rec.id
+            for field in ('contact_id', 'lead_id', 'partner_id'):
+                if rec[field] and rec[field].phone:
+                    res[id] = rec[field].phone
+                    break
+            else:
+                res[id] = False
+        return res
+
+    def _get_tree_contacts(self, cr, uid, ids, field_names, arg, context=None):
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        res = {}
+        for sample in self.browse(cr, uid, ids, context=context):
+            if sample.request_type == 'lead':
+                contact = sample.lead_name or sample.lead_id.name
+                company = sample.lead_company or sample.lead_id.partner_id.name or sample.lead_id.name
+                if contact in (company, None):
+                    contact = False
+                if company is None:
+                    company = False
+            elif sample.request_type == 'customer':
+                contact = sample.contact_id.name
+                company = sample.partner_id.name
+            res[sample.id] = {'tree_contact': contact, 'tree_company': company}
+        return res
 
     _columns = {
         'state': fields.selection(
@@ -74,11 +143,37 @@ class sample_request(osv.Model):
         'user_id': fields.many2one('res.users', 'Request by', required=True, track_visibility='onchange'),
         'create_date': fields.datetime('Request created on', readonly=True, track_visibility='onchange'),
         'instructions': fields.text('Special Instructions', track_visibility='onchange'),
-        'partner_id': fields.many2one('res.partner', 'Company', required=True, track_visibility='onchange'),
+        'partner_id': fields.many2one('res.partner', 'Company', required=False, track_visibility='onchange'),
         'partner_is_company': fields.related('partner_id', 'is_company', type='boolean', string='Partner is Company'),
+        'lead_name': fields.related('lead_id', 'contact_name', string='Contact', type='char', size=64),
+        'lead_company': fields.related('lead_id', 'partner_name', string='Contact Company', type='char', size=64),
+        'lead_id': fields.many2one('crm.lead', 'Lead', track_visibility='onchange', ondelete='restrict'),
         'contact_id': fields.many2one('res.partner', 'Contact', track_visibility='onchange'),
         'contact_name': fields.related('contact_id', 'name', type='char', size=64, string='Contact Name'),
+        'phone': fields.function(
+            _get_telephone_nos,
+            type='char',
+            size=32,
+            string='Telephone',
+            store={
+                'sample.request': (lambda k, c, u, ids, ctx: ids, ['partner_id', 'contact_id'], 10),
+                'res.partner': (_changed_res_partner_phone_ids, ['phone'], 20),
+                },
+            ),
         'ship_to_id': fields.many2one('res.partner', 'Ship To', track_visiblility='onchange'),
+        'request_type': fields.selection(
+            [('customer', 'Customer'), ('lead', 'Lead')],
+            string='Request Type', track_visibility='onchange',
+            ),
+        'tree_contact': fields.function(
+            _get_tree_contacts, type='char', size=64, multi='tree', string='Tree Contact',
+            store = {'sample.request': (lambda table, cr, uid, ids, ctx=None: ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
+            ),
+        'tree_company': fields.function(
+            _get_tree_contacts, type='char', size=64, multi='tree', string='Tree Company',
+            store = False,
+            # store={'sample.request': (lambda table, cr, uid, ids, ctx=None: ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
+            ),
         'submit_datetime': fields.datetime('Date Submitted', track_visibility='onchange'),
         # fields needed for shipping
         'address': fields.text(string='Shipping Label'),
@@ -93,6 +188,7 @@ class sample_request(osv.Model):
         'user_id': lambda obj, cr, uid, ctx: uid,
         'address_type': 'business',
         'state': 'draft',
+        'request_type': 'customer',
         }
 
     def button_sample_submit(self, cr, uid, ids, context=None):
@@ -136,27 +232,27 @@ class sample_request(osv.Model):
         if isinstance(ids, (int, long)):
             ids = [ids]
         res = []
-        for record in self.read(cr, uid, ids, fields=['id', 'partner_id'], context=context):
+        for record in self.read(
+                cr, uid, ids,
+                fields=['id', 'partner_id', 'request_type', 'lead_id'],
+                context=context,
+                ):
             id = record['id']
-            name = (record['partner_id'] or (None, ''))[1]
+            if record['request_type'] == 'lead':
+                name = (record['lead_id'] or (None, ''))[1]
+            elif record['request_type'] == 'customer':
+                name = (record['partner_id'] or (None, ''))[1]
+            else:
+                raise ERPError('unknown request type: %r' % (record['request_type'], ))
             res.append((id, name))
         return res
 
-    def _get_address(self, cr, uid, user_id, contact_id, partner_id, ship_to_id, context=None):
-        res_partner = self.pool.get('res.partner')
-        label = False
-        if ship_to_id:
-            ship_to = res_partner.browse(cr, uid, ship_to_id, context=context)
-            label = ship_to.name + '\n' + res_partner._display_address(cr, uid, ship_to, context=context)
-        elif contact_id:
-            contact = res_partner.browse(cr, uid, contact_id, context=context)
-            label = contact.name + '\n' + res_partner._display_address(cr, uid, contact, context=context)
-        elif partner_id:
-            partner = res_partner.browse(cr, uid, partner_id, context=context)
-            label = partner.name + '\n' + res_partner._display_address(cr, uid, partner, context=context)
-        return label
-
-    def onchange_contact_id(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
+    def onchange_contact_id(
+            self, cr, uid, ids,
+            user_id, contact_id, partner_id, ship_to_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
         res = {'value': {}, 'domain': {}}
         if contact_id:
             res_partner = self.pool.get('res.partner')
@@ -175,10 +271,58 @@ class sample_request(osv.Model):
                 res['value']['partner_id'] = contact.id
                 res['value']['contact_id'] = False
                 res['domain']['contact_id'] = []
-        res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, ship_to_id, context=context)
+        res['value']['address'] = self._get_address(
+                cr, uid,
+                user_id, contact_id, partner_id, ship_to_id,
+                request_type, lead_id, lead_company, lead_name,
+                context=context,
+                )
+        res['value']['phone'] = self._get_phone(
+                cr, uid,
+                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                context=context,
+                )
         return res
 
-    def onchange_partner_id(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
+    def onchange_lead_id(
+            self, cr, uid, ids,
+            user_id, contact_id, partner_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
+        res = {'value': {}}
+        if lead_id:
+            crm_lead = self.pool.get('crm.lead')
+            lead = crm_lead.browse(cr, uid, lead_id, context=context)
+            lead_partner = lead.partner_id
+            lead_company = res['value']['lead_company'] = lead.partner_name
+            lead_name = res['value']['lead_name'] = lead.contact_name
+            if partner_id != lead_partner.id:
+                partner_id = res['value']['partner_id'] = lead_partner.id
+            if contact_id:
+                contact_id = res['value']['contact_id'] = False
+        else:
+            lead_company = res['value']['lead_company'] = False
+            lead_name = res['value']['lead_name'] = False
+        res['value']['address'] = self._get_address(
+                cr, uid,
+                user_id, contact_id, partner_id,
+                request_type, lead_id, lead_company, lead_name,
+                context=context,
+                )
+        res['value']['phone'] = self._get_phone(
+                cr, uid,
+                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                context=context,
+                )
+        return res
+
+    def onchange_partner_id(
+            self, cr, uid, ids,
+            user_id, contact_id, partner_id, ship_to_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
         res = {'value': {}, 'domain': {}}
         if not partner_id:
             res['value']['contact_id'] = False
@@ -213,12 +357,55 @@ class sample_request(osv.Model):
             res['domain']['ship_to_id'] = [('ship_to_parent_id','=',partner.id)]
             if ship_to_id and ship_to.ship_to_parent_id != partner.id:
                 res['value']['ship_to_id'] = False
-        res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, ship_to_id, context=context)
+        res['value']['address'] = self._get_address(
+                cr, uid,
+                user_id, contact_id, partner_id, ship_to_id,
+                request_type, lead_id, lead_company, lead_name,
+                context=context,
+                )
+        res['value']['phone'] = self._get_phone(
+                cr, uid,
+                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                context=context,
+                )
         return res
 
-    def onchange_ship_to_id(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
+    def onchange_request_type(
+            self, cr, uid, ids,
+            user_id, contact_id, partner_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
+        res = {'value': {}}
+        if request_type == 'customer':
+            lead_id = res['value']['lead_id'] = False
+            lead_company = res['value']['lead_company'] = False
+            lead_name = res['value']['lead_name'] = False
+        elif request_type == 'lead':
+            contact_id = res['value']['contact_id'] = False
+            partner_id = res['value']['partner_id'] = False
+        else:
+            raise ERPError('unknown request type: %r' % (request_type, ))
+        res['value']['address'] = self._get_address(
+                cr, uid,
+                user_id, contact_id, partner_id,
+                request_type, lead_id, lead_company, lead_name,
+                context=context)
+        return res
+
+    def onchange_ship_to_id(
+            self, cr, uid, ids,
+            user_id, contact_id, partner_id, ship_to_id,
+            request_type, lead_id, lead_company, lead_name,
+            context=None,
+            ):
         res = {'value': {}, 'domain': {}}
-        res['value']['address'] = self._get_address(cr, uid, user_id, contact_id, partner_id, ship_to_id, context=context)
+        res['value']['address'] = self._get_address(
+                cr, uid,
+                user_id, contact_id, partner_id, ship_to_id,
+                request_type, lead_id, lead_company, lead_name,
+                context=context,
+                )
         return res
 
     def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, context=None):
