@@ -464,10 +464,11 @@ class sample_request(osv.Model):
 
 
 class sample_product(osv.Model):
+
     _name = 'sample.product'
 
     _columns = {
-        'name': fields.related('product_id', 'name'),
+        'name': fields.related('product_id', 'name', type='char', size=128),
         'request_id': fields.many2one('sample.request', string='Request'),
         'request_state': fields.related('request_id','state', type='char'),
         'product_id': fields.many2one('product.product', string='Item', domain=[('categ_id','child_of','Saleable')]),
