@@ -172,7 +172,7 @@ class sample_request(osv.Model):
             ),
         'ship_to_id': fields.many2one('res.partner', 'Ship To', track_visiblility='onchange'),
         'request_type': fields.selection(
-            [('customer', 'Customer'), ('lead', 'Lead')],
+            [('customer', 'Existing Customer'), ('lead', 'New Customer')],
             string='Request Type', track_visibility='onchange',
             ),
         'tree_contact': fields.function(
