@@ -31,7 +31,7 @@
                             @partner_id
                              | attrs="{'required': ['|',('request_type','=','customer')], 'invisible': [('request_type','!=','customer')]}"
                              | context="{'show_fis': True, 'active_test': False}"
-                             | domain="[('xml_id','!=',False),('customer','=',True),('is_company','=',True),('ship_to_parent_id','=',False)]"
+                             | domain="[('customer','=',True),('is_company','=',True),('ship_to_parent_id','=',False)]"
                              | on_change='onchange_partner_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context)'
                              | options="{'limit':15, 'create':0, 'create_edit':0}"
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
@@ -124,7 +124,7 @@
                 ~tree $Products editable='bottom'
                     @request_state invisible='1'
                     @product_id
-                     | domain="['|',('xml_id','=',False),('xml_id','!=',False)]"
+                     | domain="[('id','!=',0)]"
                      | options="{'create':false, 'create_edit':false, 'limit':15}"
                      | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     @product_lot_requested
