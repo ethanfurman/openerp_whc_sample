@@ -202,6 +202,14 @@ class sample_request(osv.Model):
         }
 
     def button_sample_complete(self, cr, uid, ids, context=None):
+        # make sure all product samples have a lot # listed
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        samples = self.browse(cr, uid, ids, context=context)
+        for sample in samples:
+            for product in sample.product_ids:
+                if not product.product_lot_used:
+                    raise ERPError('Missing Lot #', 'One or more products do not show the lot used')
         context = (context or {}).copy()
         context['sample_loop'] = True
         values = {
@@ -466,6 +474,7 @@ class sample_request(osv.Model):
         if context is None:
             context = {}
         if ids and not context.get('sample_loop'):
+            complete = False
             if isinstance(ids, (int, long)):
                 ids = [ids]
             user = self.pool.get('res.users').browse(cr, uid, uid, context=context)
@@ -485,13 +494,12 @@ class sample_request(osv.Model):
                             raise ERPError('Error', 'Order has already been submitted.  Talk to someone in Samples to get more products added.')
                 if proposed.state != 'draft' and not proposed.product_ids:
                     raise ERPError('Missing Products', 'Sample request has no products listed!')
-                elif proposed.state == 'complete':
-                    # make sure each sample product has a lot number
-                    product_ids = self.pool.get('product.product').browse(cr, uid, proposed.product_ids, context=context)
-                    for product in product_ids:
-                        if not product.product_lot_used:
-                            raise ERPError('Missing Lot #', 'One or more products do not show the lot used')
+                elif record.state != 'complete' and proposed.state == 'complete':
+                    complete = True
+                    vals.pop('state')
                 super(sample_request, self).write(cr, uid, [record.id], vals, context=context)
+                if complete:
+                    self.button_complete(cr, uid, [record.id], context=context)
             return True
         return super(sample_request, self).write(cr, uid, ids, values, context=context)
 
