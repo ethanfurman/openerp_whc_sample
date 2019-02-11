@@ -30,6 +30,7 @@
             @description: Sample request has been received.
 
 
+    ~data noupdate='1'
         // sequences
 
         ~record #seq_type_sample_request model='ir.sequence.type'
