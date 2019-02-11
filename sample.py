@@ -420,9 +420,17 @@ class sample_request(osv.Model):
         return res
 
     def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context=None):
-        res = self.onchange_partner_id(cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context=context)
-        if 'value' in res:
-            del res['value']
+        # if request type is customer, set domains for partner related fields
+        res = {}
+        if request_type == 'customer':
+            res = self.onchange_partner_id(
+                    cr, uid, ids,
+                    user_id, contact_id, partner_id, ship_to_id,
+                    request_type, lead_id, lead_company, lead_name,
+                    context=context,
+                    )
+            if 'value' in res:
+                del res['value']
         return res
 
     def unlink(self, cr, uid, ids, context=None):
