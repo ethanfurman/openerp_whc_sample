@@ -201,6 +201,14 @@ class sample_request(osv.Model):
         'request_type': 'customer',
         }
 
+    def button_sample_complete(self, cr, uid, ids, context=None):
+        context = (context or {}).copy()
+        context['sample_loop'] = True
+        values = {
+                'state': 'complete',
+                }
+        return self.write(cr, uid, ids, values, context=context)
+
     def button_sample_submit(self, cr, uid, ids, context=None):
         context = (context or {}).copy()
         context['sample_loop'] = True
@@ -477,6 +485,12 @@ class sample_request(osv.Model):
                             raise ERPError('Error', 'Order has already been submitted.  Talk to someone in Samples to get more products added.')
                 if proposed.state != 'draft' and not proposed.product_ids:
                     raise ERPError('Missing Products', 'Sample request has no products listed!')
+                elif proposed.state == 'complete':
+                    # make sure each sample product has a lot number
+                    product_ids = self.pool.get('product.product').browse(cr, uid, proposed.product_ids, context=context)
+                    for product in product_ids:
+                        if not product.product_lot_used:
+                            raise ERPError('Missing Lot #', 'One or more products do not show the lot used')
                 super(sample_request, self).write(cr, uid, [record.id], vals, context=context)
             return True
         return super(sample_request, self).write(cr, uid, ids, values, context=context)
