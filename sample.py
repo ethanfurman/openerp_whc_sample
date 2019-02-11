@@ -481,14 +481,12 @@ class sample_request(osv.Model):
             for record in self.browse(cr, SUPERUSER_ID, ids, context=context):
                 vals = values.copy()
                 proposed = Proposed(self, cr, values, record, context=context)
-                if 'state' not in vals:
-                    state = 'draft'
+                if 'state' in vals:
                     old_state = record.state
-                    if record.state == 'draft' and state not in ('draft', ):
+                    new_state = vals['state']
+                    if record.state == 'draft' and new_state not in ('draft', ):
                         # make sure 'submit' happens before other, later, states
                         self.button_sample_submit(cr, uid, ids, context=context)
-                    if proposed.state != state:
-                        proposed.state = vals['state'] = state
                     if 'product_ids' in vals and old_state != 'draft':
                         if not user.has_group('sample.group_sample_user'):
                             raise ERPError('Error', 'Order has already been submitted.  Talk to someone in Samples to get more products added.')
