@@ -206,7 +206,7 @@ class sample_request(osv.Model):
         context['sample_loop'] = True
         user = self.pool.get('res.users').browse(cr, uid, uid, context=context)
         values = {
-                'state': 'new',
+                'state': 'production',
                 'submit_datetime': fields.date.context_today(self, cr, uid, context=context),
                 }
         follower_ids = [u.partner_id.id for u in user.company_id.sample_request_followers_ids]
