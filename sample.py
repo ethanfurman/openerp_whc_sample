@@ -5,6 +5,8 @@ from fnx.oe import Proposed
 from openerp import SUPERUSER_ID
 from openerp.osv import fields, osv
 from openerp.exceptions import ERPError
+from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
+import datetime
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -192,6 +194,7 @@ class sample_request(osv.Model):
         'third_party_account': fields.char('3rd Party Account Number', size=64, track_visibility='onchange'),
         # products to sample
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
+        'lot_labels': fields.text('Lot # labels'),
         }
 
     _defaults = {
@@ -202,20 +205,111 @@ class sample_request(osv.Model):
         }
 
     def button_sample_complete(self, cr, uid, ids, context=None):
+        def _format_description(product, cpl):
+            # build description
+            code = product.product_tmpl_id.default_code.strip()
+            name = product.product_tmpl_id.name.strip()
+            if code:
+                desc = "[%s] %s" % (code, name)
+            else:
+                desc = name
+            # split description if necessary
+            width = _width(desc)
+            if width > cpl:
+                # too big for one line, split it
+                old_desc = desc
+                desc = ''
+                line_width = 0
+                for word in old_desc.split():
+                    if not line_width:
+                        desc = word[:cpl]
+                        line_width = len(desc) + 1
+                        continue
+                    word_width = _width(word)
+                    if line_width + word_width > cpl:
+                        word = word[:cpl]
+                        desc += '\n%s' % word
+                        line_width = len(word) + 1
+                        continue
+                    desc += '%s %s' % (desc, word)
+                    line_width += word_width + 1
+            # return description
+            return desc
+        def _width(word):
+            narrow = "1iltfj!"
+            wide = "WM"
+            width = len(word)
+            for ch in narrow:
+                width -= word.count(ch) * 0.5
+            for ch in wide:
+                width += word.count(ch) * 1.5
+            return width
+        def _create_label(ref_num, product, cpl, context=None):
+            """
+            Sample: [number]   [date]
+            [description]
+            [lot number]
+            """
+            label = []
+            today = datetime.date.strptime(
+                    fields.date.today(localtime=True),
+                    DEFAULT_SERVER_DATE_FORMAT,
+                    )
+            today = today.strftime('%m/%d/%Y')
+            label.extend([
+                    "Sample: {bold}%s{justify:right}%s{/bold}\n\n" % (sample.ref_num, today),
+                    "{justify:left}{bold}",
+                    _format_description(product.product_id, cpl, context=context),
+                    "{/bold}\n\n",
+                    "Lot #: {bold}%s{/bold}" % (product.product_lot_used, ),
+                    ])
+            label = ''.join(label)
+            label = label.replace('\n\n', '{cr}{lf}{lf}')
+            label = label.replace('\n', '{cr}{lf}')
+            return label
+
         # make sure all product samples have a lot # listed
         if isinstance(ids, (int, long)):
             ids = [ids]
         samples = self.browse(cr, uid, ids, context=context)
         for sample in samples:
+            labels = [
+                    "{reset}{form:6,18}{font:lq,roman,12}{margins:4,38}"
+                    + "{lf}" * 5,
+                    ]
             for product in sample.product_ids:
+                #
+                # verify used lot # exists
+                #
                 if not product.product_lot_used:
-                    raise ERPError('Missing Lot #', 'One or more products do not show the lot used')
+                    raise ERPError(
+                            'Missing Lot #',
+                            'One or more products do not show the lot used',
+                            )
+                #
+                # create label
+                #
+                labels.append(_create_label(sample.ref_num, product, 34, context=context))
+        labels = ('{ff}'+'{lf}'*5).join(labels)
         context = (context or {}).copy()
         context['sample_loop'] = True
         values = {
                 'state': 'complete',
+                'lot_labels': labels,
                 }
+        self.button_sample_reprint(cr, uid, ids, context=context)
         return self.write(cr, uid, ids, values, context=context)
+
+    def button_sample_reprint(self, cr, uid, ids, context=None):
+        # print sample labels for each product in request
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        samples = self.browse(cr, uid, ids, context=context)
+        for sample in samples:
+            # FIXME: make this go to a printer!
+            with open('/opt/openerp/var/test_sample_labels.txt', 'w') as temp:
+                temp.write(sample.lot_labels)
+        return True
 
     def button_sample_submit(self, cr, uid, ids, context=None):
         context = (context or {}).copy()
