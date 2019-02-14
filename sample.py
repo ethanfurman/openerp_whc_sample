@@ -251,10 +251,10 @@ class sample_request(osv.Model):
             [lot number]
             """
             label = []
-            today = datetime.date.strptime(
+            today = datetime.datetime.strptime(
                     fields.date.today(localtime=True),
                     DEFAULT_SERVER_DATE_FORMAT,
-                    )
+                    ).date()
             today = today.strftime('%m/%d/%Y')
             label.extend([
                     "Sample: {bold}%s{justify:right}%s{/bold}\n\n" % (sample.ref_num, today),
@@ -267,7 +267,6 @@ class sample_request(osv.Model):
             label = label.replace('\n\n', '{cr}{lf}{lf}')
             label = label.replace('\n', '{cr}{lf}')
             return label
-
         # make sure all product samples have a lot # listed
         if isinstance(ids, (int, long)):
             ids = [ids]
@@ -297,8 +296,9 @@ class sample_request(osv.Model):
                 'state': 'complete',
                 'lot_labels': labels,
                 }
+        result =  self.write(cr, uid, ids, values, context=context)
         self.button_sample_reprint(cr, uid, ids, context=context)
-        return self.write(cr, uid, ids, values, context=context)
+        return result
 
     def button_sample_reprint(self, cr, uid, ids, context=None):
         # print sample labels for each product in request
