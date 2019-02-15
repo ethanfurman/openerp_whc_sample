@@ -8,6 +8,7 @@ from openerp.exceptions import ERPError
 from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
 import datetime
 import logging
+from printcap import Oki380
 
 _logger = logging.getLogger(__name__)
 
@@ -205,9 +206,9 @@ class sample_request(osv.Model):
         }
 
     def button_sample_complete(self, cr, uid, ids, context=None):
-        def _format_description(product, cpl):
+        def _format_description(product, cpl, context=None):
             # build description
-            code = product.product_tmpl_id.default_code.strip()
+            code = product.default_code.strip()
             name = product.product_tmpl_id.name.strip()
             if code:
                 desc = "[%s] %s" % (code, name)
@@ -252,7 +253,7 @@ class sample_request(osv.Model):
             """
             label = []
             today = datetime.datetime.strptime(
-                    fields.date.today(localtime=True),
+                    fields.date.today(self, cr, localtime=True),
                     DEFAULT_SERVER_DATE_FORMAT,
                     ).date()
             today = today.strftime('%m/%d/%Y')
@@ -307,8 +308,8 @@ class sample_request(osv.Model):
         samples = self.browse(cr, uid, ids, context=context)
         for sample in samples:
             # FIXME: make this go to a printer!
-            with open('/opt/openerp/var/test_sample_labels.txt', 'w') as temp:
-                temp.write(sample.lot_labels)
+            with open('/opt/openerp/var/sample_labels/%s.prn' % sample.ref_num, 'w') as label:
+                label.write(Oki380().transform(sample.lot_labels))
         return True
 
     def button_sample_submit(self, cr, uid, ids, context=None):
