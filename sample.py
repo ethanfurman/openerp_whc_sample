@@ -206,14 +206,45 @@ class sample_request(osv.Model):
         }
 
     def button_sample_complete(self, cr, uid, ids, context=None):
-        def _format_description(product, cpl, context=None):
+        context = (context or {}).copy()
+        context['sample_loop'] = True
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        today = datetime.datetime.strptime(
+                fields.date.today(self, cr, localtime=True),
+                DEFAULT_SERVER_DATE_FORMAT,
+                ).date().today.strftime('%m/%d/%Y')
+        labels = []
+        for sample in self.browse(cr, uid, ids, context=context):
+            for product in sample.product_ids:
+                code = product.default_code.strip()
+                name = product.product_tmpl_id.name.strip()
+                if code:
+                    desc = "[%s] %s" % (code, name)
+                else:
+                    desc = name
+                labels.append(
+                        'ref: %s\n'
+                        'date: %s\n'
+                        'prod: %s\n'
+                        'lot: %s'
+                        % (
+                            sample.ref_num,
+                            today,
+                            desc,
+                            product.product_lot_used,
+                            ))
+            values = {
+                'state': 'complete',
+                'lot_labels': '\f'.join(labels),
+                }
+            self.write(cr, uid, ids, values, context=context)
+        self.button_sample_reprint(cr, uid, ids, context=context)
+        return True
+
+    def button_sample_reprint(self, cr, uid, ids, context=None):
+        def _format_description(desc, cpl, context=None):
             # build description
-            code = product.default_code.strip()
-            name = product.product_tmpl_id.name.strip()
-            if code:
-                desc = "[%s] %s" % (code, name)
-            else:
-                desc = name
             # split description if necessary
             width = _width(desc)
             if width > cpl:
@@ -245,71 +276,60 @@ class sample_request(osv.Model):
             for ch in wide:
                 width += word.count(ch) * 1.5
             return width
-        def _create_label(ref_num, product, cpl, context=None):
+        def _create_label(data, cpl, context=None):
             """
             Sample: [number]   [date]
             [description]
             [lot number]
             """
+            ref = data['ref']
+            date = data['date']
+            prod = data['prod']
+            lot = data['lot']
             label = []
-            today = datetime.datetime.strptime(
-                    fields.date.today(self, cr, localtime=True),
-                    DEFAULT_SERVER_DATE_FORMAT,
-                    ).date()
-            today = today.strftime('%m/%d/%Y')
             label.extend([
-                    "Sample: {bold}%s{justify:right}%s{/bold}\n\n" % (sample.ref_num, today),
+                    "Sample: {bold}%s{justify:right}%s{/bold}\n\n" % (ref, date),
                     "{justify:left}{bold}",
-                    _format_description(product.product_id, cpl, context=context),
+                    _format_description(prod, cpl, context=context),
                     "{/bold}\n\n",
-                    "Lot #: {bold}%s{/bold}" % (product.product_lot_used, ),
+                    "Lot #: {bold}%s{/bold}" % lot,
                     ])
             label = ''.join(label)
             label = label.replace('\n\n', '{cr}{lf}{lf}')
             label = label.replace('\n', '{cr}{lf}')
             return label
-        # make sure all product samples have a lot # listed
+        def _label_dict(data):
+            res = {}
+            for line in data.strip().split('\n'):
+                if not line.strip():
+                    continue
+                key, value = line.split(':', 1)
+                res[key.strip()] = value.strip()
+            return res
+        #
         if isinstance(ids, (int, long)):
             ids = [ids]
-        samples = self.browse(cr, uid, ids, context=context)
-        for sample in samples:
-            labels = [
-                    "{reset}{form:6,18}{font:lq,roman,12}{margins:4,38}"
-                    + "{lf}" * 5,
+        header = (
+                "{reset}{form:6,18}{font:lq,roman,12}{margins:4,38}"
+                + "{lf}" * 5
+                )
+        for sample in self.browse(cr, uid, ids, context=context):
+            ref_num = sample.ref_num
+            # generate plain-text version
+            with open('/opt/openerp/var/sample_labels/%s.txt' % ref_num, 'w') as label:
+                label.write(sample.lot_labels)
+            # generate custom Okidata version
+            label_data = [
+                    _label_dict(l)
+                    for l in sample.lot_labels.split('\f')
                     ]
-            for product in sample.product_ids:
-                #
-                # verify used lot # exists
-                #
-                if not product.product_lot_used:
-                    raise ERPError(
-                            'Missing Lot #',
-                            'One or more products do not show the lot used',
-                            )
-                #
-                # create label
-                #
-                labels.append(_create_label(sample.ref_num, product, 34, context=context))
-        labels = ('{ff}'+'{lf}'*5).join(labels)
-        context = (context or {}).copy()
-        context['sample_loop'] = True
-        values = {
-                'state': 'complete',
-                'lot_labels': labels,
-                }
-        result =  self.write(cr, uid, ids, values, context=context)
-        self.button_sample_reprint(cr, uid, ids, context=context)
-        return result
-
-    def button_sample_reprint(self, cr, uid, ids, context=None):
-        # print sample labels for each product in request
-        if isinstance(ids, (int, long)):
-            ids = [ids]
-        samples = self.browse(cr, uid, ids, context=context)
-        for sample in samples:
-            # FIXME: make this go to a printer!
-            with open('/opt/openerp/var/sample_labels/%s.prn' % sample.ref_num, 'w') as label:
-                label.write(Oki380().transform(sample.lot_labels))
+            labels = [
+                _create_label(lbl, cpl=34, context=context)
+                for lbl in label_data
+                ]
+            labels = header + ('{ff}'+'{lf}'*5).join(labels)
+            with open('/opt/openerp/var/sample_labels/%s.prn' % ref_num, 'w') as label:
+                label.write(Oki380().transform(labels))
         return True
 
     def button_sample_submit(self, cr, uid, ids, context=None):
