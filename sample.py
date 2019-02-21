@@ -213,21 +213,21 @@ class sample_request(osv.Model):
         today = datetime.datetime.strptime(
                 fields.date.today(self, cr, localtime=True),
                 DEFAULT_SERVER_DATE_FORMAT,
-                ).date().today.strftime('%m/%d/%Y')
+                ).date().strftime('%m/%d/%Y')
         labels = []
         for sample in self.browse(cr, uid, ids, context=context):
             for product in sample.product_ids:
-                code = product.default_code.strip()
-                name = product.product_tmpl_id.name.strip()
+                code = product.product_id.default_code.strip()
+                name = product.product_id.product_tmpl_id.name.strip()
                 if code:
                     desc = "[%s] %s" % (code, name)
                 else:
                     desc = name
                 labels.append(
-                        'ref: %s\n'
-                        'date: %s\n'
-                        'prod: %s\n'
-                        'lot: %s'
+                        'Request: %s\n'
+                        'Date: %s\n'
+                        'Product: %s\n'
+                        'Lot: %s'
                         % (
                             sample.ref_num,
                             today,
@@ -246,26 +246,23 @@ class sample_request(osv.Model):
         def _format_description(desc, cpl, context=None):
             # build description
             # split description if necessary
-            width = _width(desc)
-            if width > cpl:
-                # too big for one line, split it
-                old_desc = desc
-                desc = ''
-                line_width = 0
-                for word in old_desc.split():
-                    if not line_width:
-                        desc = word[:cpl]
-                        line_width = len(desc) + 1
-                        continue
-                    word_width = _width(word)
-                    if line_width + word_width > cpl:
-                        word = word[:cpl]
-                        desc += '\n%s' % word
-                        line_width = len(word) + 1
-                        continue
-                    desc += '%s %s' % (desc, word)
-                    line_width += word_width + 1
-            # return description
+            words = desc.split()
+            width = 0
+            result = []
+            desc = ''
+            for word in words:
+                word_width = _width(word)
+                if width == 0:
+                    result.append(word[:cpl])
+                    width += word_width
+                elif width + 1 + word_width <= cpl:
+                    result.append(word)
+                    width += 1 + word_width
+                else:
+                    desc += ' '.join(result) + '\n'
+                    result = [word]
+                    width = _width(word)
+            desc += ' '.join(result)
             return desc
         def _width(word):
             narrow = "1iltfj!"
@@ -278,17 +275,17 @@ class sample_request(osv.Model):
             return width
         def _create_label(data, cpl, context=None):
             """
-            Sample: [number]   [date]
+            Request: [number]   [date]
             [description]
             [lot number]
             """
-            ref = data['ref']
-            date = data['date']
-            prod = data['prod']
-            lot = data['lot']
+            ref = data['Request']
+            date = data['Date']
+            prod = data['Product']
+            lot = data['Lot']
             label = []
             label.extend([
-                    "Sample: {bold}%s{justify:right}%s{/bold}\n\n" % (ref, date),
+                    "Request: {bold}%s{justify:right}%s{/bold}\n\n" % (ref, date),
                     "{justify:left}{bold}",
                     _format_description(prod, cpl, context=context),
                     "{/bold}\n\n",
