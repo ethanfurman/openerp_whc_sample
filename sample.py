@@ -5,7 +5,7 @@ from fnx.oe import Proposed
 from openerp import SUPERUSER_ID
 from openerp.osv import fields, osv
 from openerp.exceptions import ERPError
-from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
+from openerp.tools import DEFAULT_SERVER_DATE_FORMAT, self_ids, self_uid
 import datetime
 import logging
 from printcap import Oki380
@@ -78,7 +78,7 @@ class sample_request(osv.Model):
     def _get_address(
             self, cr, uid,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res_partner = self.pool.get('res.partner')
@@ -87,8 +87,8 @@ class sample_request(osv.Model):
             crm_lead = self.pool.get('crm.lead')
             lead = crm_lead.browse(cr, uid, lead_id, context=context)
             label = ''
-            if lead_name:
-                label += lead_name + '\n'
+            if lead_contact:
+                label += lead_contact + '\n'
             label += crm_lead._display_address(cr, uid, lead, context=context)
         elif contact_id:
             contact = res_partner.browse(cr, uid, contact_id, context=context)
@@ -129,8 +129,8 @@ class sample_request(osv.Model):
         res = {}
         for sample in self.browse(cr, uid, ids, context=context):
             if sample.request_type == 'lead':
-                contact = sample.lead_name or sample.lead_id.name
-                company = sample.lead_company or sample.lead_id.partner_id.name or sample.lead_id.name
+                contact = sample.lead_contact or sample.lead_id.name
+                company = sample.lead_partner or sample.lead_id.partner_id.name or sample.lead_id.name
                 if contact in (company, None):
                     contact = False
                 if company is None:
@@ -158,18 +158,18 @@ class sample_request(osv.Model):
         'instructions': fields.text('Special Instructions', track_visibility='onchange'),
         'partner_id': fields.many2one('res.partner', 'Company', required=False, track_visibility='onchange'),
         'partner_is_company': fields.related('partner_id', 'is_company', type='boolean', string='Partner is Company'),
-        'lead_name': fields.related('lead_id', 'contact_name', string='Contact', type='char', size=64),
-        'lead_company': fields.related('lead_id', 'partner_name', string='Contact Company', type='char', size=64),
-        'lead_id': fields.many2one('crm.lead', 'Lead', track_visibility='onchange', ondelete='restrict'),
         'contact_id': fields.many2one('res.partner', 'Contact', track_visibility='onchange'),
         'contact_name': fields.related('contact_id', 'name', type='char', size=64, string='Contact Name'),
+        'lead_id': fields.many2one('crm.lead', 'Lead', track_visibility='onchange', ondelete='restrict'),
+        'lead_partner': fields.related('lead_id', 'partner_name', string='Lead Company', type='char', size=64),
+        'lead_contact': fields.related('lead_id', 'contact_name', string='Lead Contact', type='char', size=64),
         'phone': fields.function(
             _get_telephone_nos,
             type='char',
             size=32,
             string='Telephone',
             store={
-                'sample.request': (lambda k, c, u, ids, ctx: ids, ['partner_id', 'contact_id'], 10),
+                'sample.request': (self_ids, ['partner_id', 'contact_id', 'lead_id'], 10),
                 'res.partner': (_changed_res_partner_phone_ids, ['phone'], 20),
                 },
             ),
@@ -180,12 +180,12 @@ class sample_request(osv.Model):
             ),
         'tree_contact': fields.function(
             _get_tree_contacts, type='char', size=64, multi='tree', string='Tree Contact',
-            store = {'sample.request': (lambda table, cr, uid, ids, ctx=None: ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
+            store = {'sample.request': (self_ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
             ),
         'tree_company': fields.function(
             _get_tree_contacts, type='char', size=64, multi='tree', string='Tree Company',
             store = False,
-            # store={'sample.request': (lambda table, cr, uid, ids, ctx=None: ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
+            # store={'sample.request': (self_ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
             ),
         'submit_datetime': fields.datetime('Date Submitted', track_visibility='onchange'),
         # fields needed for shipping
@@ -199,7 +199,7 @@ class sample_request(osv.Model):
         }
 
     _defaults = {
-        'user_id': lambda obj, cr, uid, ctx: uid,
+        'user_id': self_uid,
         'address_type': 'business',
         'state': 'draft',
         'request_type': 'customer',
@@ -361,9 +361,7 @@ class sample_request(osv.Model):
         return super(sample_request, self).copy(cr, uid, id, default, context)
 
     def create(self, cr, uid, vals, context=None):
-        ref_num = vals['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
-        partner = self.pool.get('res.partner').browse(cr, uid, vals['partner_id'], context=context)
-        vals['ref_name'] = "%s - %s" % (ref_num, partner.name)
+        vals['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
         return super(sample_request, self).create(cr, uid, vals, context)
 
     def name_get(self, cr, uid, ids, context=None):
@@ -388,7 +386,7 @@ class sample_request(osv.Model):
     def onchange_contact_id(
             self, cr, uid, ids,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res = {'value': {}, 'domain': {}}
@@ -412,7 +410,7 @@ class sample_request(osv.Model):
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
-                request_type, lead_id, lead_company, lead_name,
+                request_type, lead_id, lead_partner, lead_contact,
                 context=context,
                 )
         res['value']['phone'] = self._get_phone(
@@ -425,27 +423,27 @@ class sample_request(osv.Model):
     def onchange_lead_id(
             self, cr, uid, ids,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res = {'value': {}}
         if lead_id:
             crm_lead = self.pool.get('crm.lead')
             lead = crm_lead.browse(cr, uid, lead_id, context=context)
-            lead_partner = lead.partner_id
-            lead_company = res['value']['lead_company'] = lead.partner_name
-            lead_name = res['value']['lead_name'] = lead.contact_name
-            if partner_id != lead_partner.id:
-                partner_id = res['value']['partner_id'] = lead_partner.id
+            lead_partner_id = lead.partner_id
+            lead_partner = res['value']['lead_partner'] = lead.partner_name
+            lead_contact = res['value']['lead_contact'] = lead.contact_name
+            if partner_id != lead_partner_id.id:
+                partner_id = res['value']['partner_id'] = lead_partner_id.id
             if contact_id:
                 contact_id = res['value']['contact_id'] = False
         else:
-            lead_company = res['value']['lead_company'] = False
-            lead_name = res['value']['lead_name'] = False
+            lead_partner = res['value']['lead_partner'] = False
+            lead_contact = res['value']['lead_contact'] = False
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
-                request_type, lead_id, lead_company, lead_name,
+                request_type, lead_id, lead_partner, lead_contact,
                 context=context,
                 )
         res['value']['phone'] = self._get_phone(
@@ -458,7 +456,7 @@ class sample_request(osv.Model):
     def onchange_partner_id(
             self, cr, uid, ids,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res = {'value': {}, 'domain': {}}
@@ -498,7 +496,7 @@ class sample_request(osv.Model):
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
-                request_type, lead_id, lead_company, lead_name,
+                request_type, lead_id, lead_partner, lead_contact,
                 context=context,
                 )
         res['value']['phone'] = self._get_phone(
@@ -511,14 +509,14 @@ class sample_request(osv.Model):
     def onchange_request_type(
             self, cr, uid, ids,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res = {'value': {}}
         if request_type == 'customer':
             lead_id = res['value']['lead_id'] = False
-            lead_company = res['value']['lead_company'] = False
-            lead_name = res['value']['lead_name'] = False
+            lead_partner = res['value']['lead_partner'] = False
+            lead_contact = res['value']['lead_contact'] = False
         elif request_type == 'lead':
             contact_id = res['value']['contact_id'] = False
             partner_id = res['value']['partner_id'] = False
@@ -527,7 +525,7 @@ class sample_request(osv.Model):
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
-                request_type, lead_id, lead_company, lead_name,
+                request_type, lead_id, lead_partner, lead_contact,
                 context=context,
                 )
         return res
@@ -535,26 +533,26 @@ class sample_request(osv.Model):
     def onchange_ship_to_id(
             self, cr, uid, ids,
             user_id, contact_id, partner_id, ship_to_id,
-            request_type, lead_id, lead_company, lead_name,
+            request_type, lead_id, lead_partner, lead_contact,
             context=None,
             ):
         res = {'value': {}, 'domain': {}}
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
-                request_type, lead_id, lead_company, lead_name,
+                request_type, lead_id, lead_partner, lead_contact,
                 context=context,
                 )
         return res
 
-    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_company, lead_name, context=None):
+    def onload(self, cr, uid, ids, user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context=None):
         # if request type is customer, set domains for partner related fields
         res = {}
         if request_type == 'customer':
             res = self.onchange_partner_id(
                     cr, uid, ids,
                     user_id, contact_id, partner_id, ship_to_id,
-                    request_type, lead_id, lead_company, lead_name,
+                    request_type, lead_id, lead_partner, lead_contact,
                     context=context,
                     )
             if 'value' in res:
