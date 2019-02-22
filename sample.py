@@ -230,6 +230,8 @@ class sample_request(osv.Model):
         # products to sample
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
         'lot_labels': fields.text('Lot # labels'),
+        # allow changes?
+        'is_historical': fields.boolean('Historical record?'),
         }
 
     _defaults = {
