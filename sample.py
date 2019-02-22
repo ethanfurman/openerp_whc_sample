@@ -83,7 +83,13 @@ class sample_request(osv.Model):
             ):
         res_partner = self.pool.get('res.partner')
         label = False
-        if lead_id:
+        if ship_to_id:
+            label = ''
+            if contact_id:
+                label += res_partner.browse(cr, uid, contact_id, context=context).name + '\n'
+            ship_to = res_partner.browse(cr, uid, ship_to_id, context=context)
+            label += res_partner._display_address(cr, uid, ship_to, context=context)
+        elif lead_id:
             crm_lead = self.pool.get('crm.lead')
             lead = crm_lead.browse(cr, uid, lead_id, context=context)
             label = ''
