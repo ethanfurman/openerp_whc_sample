@@ -98,6 +98,26 @@ class sample_request(osv.Model):
             label = partner.name + '\n' + res_partner._display_address(cr, uid, partner, context=context)
         return label
 
+    def _get_record_name( self, cr, uid, ids, field_name, arg, context=None):
+        res = {}
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        for sample in self.browse(cr, uid, ids, context=context):
+            partial_name = "%s - %%s" % sample.ref_num
+            if sample.request_type == 'customer':
+                res[sample.id] = partial_name % sample.partner_id.name
+            elif sample.request_type == 'lead':
+                if sample.lead_id.partner_id:
+                    res[sample.id] = partial_name % sample.lead_id.partner_id.name
+                else:
+                    res[sample.id] = partial_name % (sample.lead_partner or sample.lead_contact)
+            else:
+                raise ERPError(
+                    'Bad Request Type',
+                    'Unknown sample request type: %r' % (sample.request_type, ),
+                    )
+        return res
+
     def _get_phone(self, cr, uid, links, context=None):
         for table, id in links:
             if not id:
@@ -152,7 +172,15 @@ class sample_request(osv.Model):
             sort_order='definition',
             ),
         'ref_num': fields.char('Reference Sequence', size=12),
-        'ref_name': fields.char('Reference Name', size=64),
+        'ref_name': fields.function(
+            _get_record_name,
+            type='char',
+            size=64,
+            string='Reference Name',
+            store={
+                'sample.request': (self_ids, ['partner_id', 'lead_id'], 10),
+                },
+            ),
         'user_id': fields.many2one('res.users', 'Request by', required=True, track_visibility='onchange'),
         'create_date': fields.datetime('Request created on', readonly=True, track_visibility='onchange'),
         'instructions': fields.text('Special Instructions', track_visibility='onchange'),
