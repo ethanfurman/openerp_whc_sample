@@ -7,3 +7,6 @@ access_sample_product_all,sample.product all,model_sample_product,,1,0,0,0
 access_sample_product_user,sample.product user,model_sample_product,group_sample_user,1,1,1,1
 access_sample_product_sales,sample.product sales,model_sample_product,base.group_sale_salesman,1,1,1,1
 access_sample_product_manager,sample.product manager,model_sample_product,group_sample_manager,1,1,1,1
+access_sample_shipping_user,sample.shipping user,model_sample_shipping,group_sample_user,1,1,1,0
+access_sample_shipping_sales,sample.shipping sales,model_sample_shipping,base.group_sale_salesman,1,1,1,0
+access_sample_shipping_manager,sample.shipping manager,model_sample_shipping,group_sample_manager,1,1,1,1
