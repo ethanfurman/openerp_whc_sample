@@ -160,6 +160,7 @@ class sample_request(osv.Model):
         'create_uid': fields.many2one('res.users', string='Record created by', readonly=True),
         'write_date': fields.datetime('Last modified', readonly=True),
         'write_uid': fields.many2one('res.users', string='Last modified by', readonly=True),
+        'comments': fields.text('Comments'),
         'instructions': fields.text('Special Instructions', track_visibility='onchange'),
         'partner_id': fields.many2one('res.partner', 'Company', required=False, track_visibility='onchange'),
         'partner_is_company': fields.related('partner_id', 'is_company', type='boolean', string='Partner is Company'),
@@ -203,7 +204,7 @@ class sample_request(osv.Model):
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
         'lot_labels': fields.text('Lot # labels'),
         # allow changes?
-        'is_historical': fields.boolean('Historical record?'),
+        'is_historical': fields.boolean('Historical Record?'),
         }
 
     _defaults = {
@@ -371,7 +372,7 @@ class sample_request(osv.Model):
     def create(self, cr, uid, values, context=None):
         if 'ref_num' not in values:
             values['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
-        values['create_uid'] = values['write_uid'] = values['user_id']
+        values['create_uid'] = values['write_uid'] = values['uid']
         values['write_date'] = fields.datetime.now(self, cr)
         if 'create_date' not in values:
             values['create_date'] = values['write_date']
