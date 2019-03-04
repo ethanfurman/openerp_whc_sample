@@ -12,40 +12,6 @@ from printcap import Oki380
 
 _logger = logging.getLogger(__name__)
 
-# selections
-COMMON_SHIPPING = (
-        ('fedex_first', 'FedEx First Overnight(early AM'),
-        ('fedex_next', 'FedEx Next Overnight (late AM)'),
-        ('fedex_overnight', 'FedEx Standard Overnight (early PM)'),
-        ('fedex_2_am', 'FedEx 2-Day AM'),
-        ('fedex_2_pm', 'FedEx 2-Day PM'),
-        ('fedex_3', 'FedEx 3-Day (Express Saver)'),
-        ('fedex_ground', 'FedEx Ground'),
-        ('ups_first', 'UPS First Overnight'),
-        ('ups_next', 'UPS Next Overnight (late AM)'),
-        ('ups_overnight', 'UPS Overnight (late PM)'),
-        ('ups_2', 'UPS 2-Day'),
-        ('ups_3', 'UPS 3-Day'),
-        ('ups_ground', 'UPS Ground'),
-        ('ontrac_first', 'ONTRAC First Overnight'),
-        ('ontrac_next', 'ONTRAC Next Overnight (early AM)'),
-        ('ontrac_overnight', 'ONTRAC Overnight (late PM)'),
-        ('ontrac_2', 'ONTRACK 2-Day'),
-        ('dhl', 'DHL (give to receptionist)'),
-        ('rep', 'Deliver to Sales Rep'),
-        ('invoice', 'Ship with Invoice'),
-        ('northbay', 'Falcon North Bay Truck'),
-        )
-
-REQUEST_SHIPPING = (
-        ('cheap_1', 'Cheapest 1-Day'),
-        ('cheap_2', 'Cheapest 2-Day'),
-        ('cheap_3', 'Cheapest 3-Day'),
-        ('cheap_ground', 'Cheapest Ground'),
-        ) + COMMON_SHIPPING + (
-        ('international', 'International (give to receptionist)'),
-        )
-
 # custom tables
 class sample_request(osv.Model):
     _name = 'sample.request'
@@ -53,6 +19,8 @@ class sample_request(osv.Model):
     _order = 'state, create_date'
     _description = 'Sample Request'
     _rec_name = 'ref_name'
+
+    _log_access = False
 
     _track = {
         'state' : {
@@ -189,6 +157,9 @@ class sample_request(osv.Model):
             ),
         'user_id': fields.many2one('res.users', 'Request by', required=True, track_visibility='onchange'),
         'create_date': fields.datetime('Request created on', readonly=True, track_visibility='onchange'),
+        'create_uid': fields.many2one('res.users', string='Record created by', readonly=True),
+        'write_date': fields.datetime('Last modified', readonly=True),
+        'write_uid': fields.many2one('res.users', string='Last modified by', readonly=True),
         'instructions': fields.text('Special Instructions', track_visibility='onchange'),
         'partner_id': fields.many2one('res.partner', 'Company', required=False, track_visibility='onchange'),
         'partner_is_company': fields.related('partner_id', 'is_company', type='boolean', string='Partner is Company'),
@@ -224,9 +195,10 @@ class sample_request(osv.Model):
         'submit_datetime': fields.datetime('Date Submitted', track_visibility='onchange'),
         # fields needed for shipping
         'address': fields.text(string='Shipping Label'),
-        'address_type': fields.selection([('business', 'Commercial'), ('personal', 'Residential')], string='Address type', required=True, track_visibility='onchange'),
-        'request_ship': fields.selection(REQUEST_SHIPPING, string='Ship Via', required=True, track_visibility='onchange'),
+        'address_type': fields.selection([('business', 'Commercial'), ('personal', 'Residential')], string='Address type', required=False, track_visibility='onchange'),
+        'request_ship': fields.many2one('sample.shipping', string='Ship Via', required=False, track_visibility='onchange'),
         'third_party_account': fields.char('3rd Party Account Number', size=64, track_visibility='onchange'),
+        'ship_date': fields.date('Date Shipped'),
         # products to sample
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
         'lot_labels': fields.text('Lot # labels'),
@@ -396,9 +368,14 @@ class sample_request(osv.Model):
         default['product_ids'] = product_ids
         return super(sample_request, self).copy(cr, uid, id, default, context)
 
-    def create(self, cr, uid, vals, context=None):
-        vals['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
-        return super(sample_request, self).create(cr, uid, vals, context)
+    def create(self, cr, uid, values, context=None):
+        if 'ref_num' not in values:
+            values['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
+        values['create_uid'] = values['write_uid'] = values['user_id']
+        values['write_date'] = fields.datetime.now(self, cr)
+        if 'create_date' not in values:
+            values['create_date'] = values['write_date']
+        return super(sample_request, self).create(cr, uid, values, context)
 
     def name_get(self, cr, uid, ids, context=None):
         if isinstance(ids, (int, long)):
@@ -619,6 +596,8 @@ class sample_request(osv.Model):
     def write(self, cr, uid, ids, values, context=None):
         if context is None:
             context = {}
+        values['write_uid'] = uid
+        values['write_date'] = fields.datetime.now(self, cr)
         if ids and not context.get('sample_loop'):
             complete = False
             if isinstance(ids, (int, long)):
@@ -646,6 +625,23 @@ class sample_request(osv.Model):
                     self.button_complete(cr, uid, [record.id], context=context)
             return True
         return super(sample_request, self).write(cr, uid, ids, values, context=context)
+
+
+class sample_shipping(osv.Model):
+
+    _name = 'sample.shipping'
+
+    _columns = {
+            'name': fields.char('Shipping Method', size=128, required=True),
+            'active': fields.boolean('Available Method?'),
+            'sort_order': fields.integer('Sort Order', help='position to display in list'),
+            'days': fields.integer('Days', help='how many days to get there'),
+            'guaranteed_by': fields.char('Guaranteed by', help='Morning?  Evening? 2pm?'),
+            }
+
+    _defaults = {
+            'active': True,
+            }
 
 
 class sample_product(osv.Model):
