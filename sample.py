@@ -90,6 +90,7 @@ class sample_request(osv.Model):
                     'Bad Request Type',
                     'Unknown sample request type: %r' % (sample.request_type, ),
                     )
+            res[sample.id] = res[sample.id].replace(' - None', '')
         return res
 
     def _get_phone(self, cr, uid, links, context=None):
