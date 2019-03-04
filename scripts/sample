@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-from collections import defaultdict
-from dbf import Date
+from antipathy import Path
 from openerplib import get_connection, get_records, AttrDict
-from sample import split_label
 from scription import *
+import dbf
 import os
 
-CONFIG = '/etc/openerp/fnx.ini'
+virtualenv = os.environ['VIRTUAL_ENV']
+CONFIG = Path('%s/config/fnx.ini' % virtualenv)
+
 
 try:
     settings = OrmFile(CONFIG, section='openerp')
@@ -44,129 +45,293 @@ def main(host, db, user, pw):
             raise SystemExit('%r required; use --help for more info' % req)
 
 
-@Command(
-        shipper=Spec('the shipping company used to send the package', type=unicode.lower),
-        tracking=Spec('the tracking number assigned to the package', ),
-        date=Spec('date package arrived [YYYY-mm-dd]', OPTION, type=Date.fromymd),
-        by=Spec('package delivered to whom', OPTION, type=unicode.title),
-        )
-def receive(shipper, tracking, date, by):
-    """
-    update the date and received-by fields for sample shipments
-    """
-    if not date and not by:
-        abort('must specify at least one of [ DATE | BY ]')
+@Command()
+def from_access():
+    "imports historical sample requests from Access database"
+    base = Path('/home/ethan/EvS/WholeHerb/converting/Sample_memo_db_')
+    # customer w/main information
+    customer = base + 'Customers_stage3'
+    # requests with shipping information (link to customer)
+    requests = base + 'Sample_Memo_stage3'
+    # products and lot #s (link to requests)
+    product_lot = base + 'Samples_Requested_stage3'
+    #
     connect_oe()
-    fields = OE.sample_request.fields_view_get()['fields']
-    shippers = set([s.split('_')[0] for s, n in fields['actual_ship']['selection']])
-    print('found shippers:', shippers)
-    if shipper not in shippers:
-        abort('shipper %r not found (possibilities: %s)' % (shipper, ', '.join([s.upper() for s in shippers])))
-    records = get_records(
+    #
+    # add customers first (which means get existing customers first)
+    #
+    print('loading OpenERP customers')
+    oe_customers = dict([
+        (r.xml_id, r)
+        for r in get_records(
+                OE.res_partner,
+                domain=[('customer','=',True),('xml_id','!=',False),('module','=','CSMS')],
+                fields=['id','xml_id','child_ids'],
+                context={'active_test': False},
+                )])
+    print('adding Access customers')
+    with dbf.Table(customer, dbf_type='clp', default_data_types='enhanced') as customer:
+        for rec in customer:
+            if dbf.recno(rec) == 1:
+                continue
+            if rec.company in ('New Customer', 'New Lab'):
+                continue
+            if not rec.company:
+                continue
+            xml_id = ('00000' + rec.xml_id)[-6:]
+            if xml_id not in oe_customers:
+                # better add it
+                new_id = OE.res_partner.create({
+                    'xml_id': xml_id,
+                    'module': 'CSMS',
+                    'name': rec.company,
+                    'is_company': True,
+                    'customer': True,
+                    'phone': rec.phone,
+                    'street': rec.street,
+                    'city': rec.city,
+                    'state': rec.state,
+                    'zip': rec.postal,
+                    'country': rec.country,
+                    })
+                oe_customers[xml_id] = AttrDict({'id': new_id, 'xml_id': xml_id, 'child_ids':[]})
+                if rec.contact and rec.contact != '-':
+                    existing_contacts = oe_customers[xml_id].child_ids
+                    for contact in existing_contacts:
+                        if rec.contact == contact.name:
+                            break
+                    else:
+                        # did not find a match, so add it
+                        OE.res_partner.create({
+                            'name': rec.contact,
+                            'parent_id': new_id,
+                            })
+    #
+    # now add sample requests
+    #
+    print('getting OpenERP contacts')
+    oe_contacts = dict([
+        ((r.parent_id and r.parent_id.id,r.name), r)
+        for r in get_records(
+                OE.res_partner,
+                domain=[('is_company','=',False)],
+                fields=['id','name','parent_id','phone'],
+                context={'active_test': False},
+                )])
+    # needs_restoring = (id, phone, really?)
+    needs_restoring = {}
+    print('getting OpenERP sales people')
+    sales_people = dict([
+        (r.name.lower(), r.id)
+        for r in get_records(
+            OE.res_users,
+            fields=['id','name'],
+            context={'active_test': False},
+            )])
+    print('getting OpenERP shipping methods')
+    shipping_methods = dict([
+        (s.name.lower(), s.id)
+        for s in get_records(
+            OE.sample_shipping,
+            fields=['id','name'],
+            context={'active_test': False},
+            )])
+    print('loading OpenERP sample memos')
+    existing_requests = set([
+        r.ref_num
+        for r in get_records(
             OE.sample_request,
-            domain=[('tracking','=',tracking)],
-            fields=['id', 'actual_ship', 'user_id', 'partner_id', 'julian_date_code', 'invoice', 'production_order'],
-            )
-    if len(records) > 1:
-        template = '{user_id[1]:<20} | {partner_id[1]:<30.30} | {julian_date_code:>7} | {invoice:>8} | {production_order:>11}'
-        print('multiple records found for %r:' % tracking, file=stderr)
-        print('-' * 90, file=stderr)
-        print(template.format(
-            user_id=(0, 'user'),
-            partner_id=(0, 'partner'),
-            julian_date_code='julian',
-            invoice='invoice',
-            production_order='prod order',
-            ), file=stderr)
-        print('-' * 90, file=stderr)
-        for record in records:
-            print(
-                template.format(**record),
-                file=stderr,
-                )
-        print('-' * 90, file=stderr)
-        abort('')
-    for record in records:
-        if not record.actual_ship.startswith(shipper):
-            print('shipper on record (%r) does not match %s' % (record.actual_ship, shipper.upper()), file=stderr)
-        data = {}
-        if date:
-            data['received_datetime'] = str(date)
-        if by:
-            data['received_by'] = by
-        OE.sample_request.write(record.id, data)
-
-
-@Command(
-        dry_run=('show results, do not update', FLAG),
-        fix_errors=('make reasonable guesses on error input', FLAG),
-        )
-def fix_qty_label(dry_run, fix_errors):
-    """
-    normalize qty_label field (e.g. 4-2oz. -> 4 - 2 oz)
-    """
-    connect_oe()
-    qty_label = OE.conn.get_model('sample.qty_label')
-    records = get_records(qty_label, fields=['id', 'name'])
-    canonical = {}
-    reassignment = {}
-    duplicates = []
-    for rec in records:
-        if rec.name.replace(' ', '').isalpha():
-            # just words, leave as-is
-            continue
-        label = split_label(rec.name, not fix_errors)
-        if 'error' in label:
-            print('%-20s  <- %s' % (label, rec.name), file=stderr)
-            continue
-        if dry_run or script_verbosity:
-            echo('%-20s  <- %s' % (label, rec.name))
-        id = canonical.setdefault(label, rec.id)
-        reassignment[rec.id] = id
-        if rec.id != id:
-            duplicates.append(rec.id)
-        if rec.name != label and not dry_run:
-            qty_label.write(rec.id, {'name': label})
-    sample_product = OE.conn.get_model('sample.product')
-    records = get_records(sample_product, fields=['id', 'qty_id'])
-    updates = defaultdict(list)
-    for rec in records:
-        qty_id = reassignment.get(rec.qty_id and rec.qty_id[0] or 0)
-        if qty_id is not None:
-            updates[qty_id].append(rec.id)
-    for qty_id, change_ids in updates.items():
-        if dry_run:
-            echo(qty_id, '->', change_ids)
-        else:
-            sample_product.write(change_ids, {'qty_id': qty_id})
-    if not dry_run:
-        qty_label.unlink(duplicates)
-
-
-@Command(
-        filename=('file to store results in', ),
-        reset=('start with clean file', FLAG),
-        )
-def snapshot(filename, reset):
-    "generate text file of sample products by request id / product id / qty name"
-    if not os.path.exists(filename):
-        reset = True
-    connect_oe()
-    sample_product = OE.conn.get_model('sample.product')
-    records = sorted(get_records(sample_product), key=lambda r: r.id)
-    if not reset:
-        with open(filename) as f:
-            lines = f.read().strip().split('\n')
-    with open(filename, 'w') as f:
-        i = -1
-        for rec in records:
-            i += 1
-            qty = rec.qty_id and rec.qty_id[1] or ''
-            if reset:
-                line = '%5d, %-15s' % (rec.id, qty)
+            fields=['id','ref_num'],
+            )])
+    print('adding Access sample memos')
+    with dbf.Table(requests, dbf_type='clp', default_data_types='enhanced') as requests:
+        # just process 2014+ for now
+        for rec in requests:
+            if dbf.recno(rec) == 1:
+                continue
+            if not rec.orderdate.startswith(('2017','2018','2019')):
+                continue
+            if rec.order_id in existing_requests:
+                continue
+            # but add salespeople first
+            if not rec.salesman:
+                salesman_id = False
             else:
-                line = lines[i] + ', %5d, %-15s' % (rec.id, qty)
-            f.write(line + '\n')
+                salesman_id = sales_people.get(rec.salesman.lower())
+                if salesman_id is None:
+                    salesman_id = OE.res_users.create({
+                        'name': rec.salesman,
+                        'login': '_'.join(rec.salesman.lower().split()),
+                        'active': False,
+                        })
+                    sales_people[rec.salesman.lower()] = salesman_id
+            # and add shipping method first
+            if not rec.shipping:
+                shipping_id = False
+            else:
+                shipping_id = shipping_methods.get(rec.shipping.lower())
+                if shipping_id is None:
+                    shipping_id = OE.sample_shipping.create({
+                        'name': rec.shipping,
+                        })
+                    shipping_methods[rec.shipping.lower()] = shipping_id
+            # add/update contact first
+            if not rec.s_contact:
+                contact_id = False
+                company_id = False
+            else:
+                try:
+                    xml_id = ('00000'+rec.cust_id)[-6:]
+                    company = oe_customers[xml_id]
+                except KeyError:
+                    if xml_id != '000001':
+                        print(rec, border='box')
+                    continue
+                company_id = company.id
+                if rec.s_contact:
+                    # child_ids is a list of ids
+                    existing_contacts = oe_customers[xml_id].child_ids
+                    for contact_id in existing_contacts:
+                        # if rec.s_contact == contact.name:
+                        if (company_id, rec.s_contact) in oe_contacts:
+                            # get contact record
+                            contact = oe_contacts[company_id, rec.s_contact]
+                            contact_id = contact.id
+                            if rec.s_phone != contact.phone:
+                                if (company_id, contact.name) not in needs_restoring:
+                                    needs_restoring[company_id, contact.name] = (contact.id, contact.phone, True)
+                                OE.res_partner.write(contact.id, {'phone': rec.s_phone})
+                            break
+                    else:
+                        # did not find a match, so add it
+                        contact_id = OE.res_partner.create({
+                            'name': rec.s_contact,
+                            'parent_id': company_id,
+                            'phone': rec.s_phone,
+                            })
+                        oe_contacts[company_id, rec.s_contact] = AttrDict(
+                                name=rec.s_contact,
+                                parent_id=company_id,
+                                phone=rec.s_phone,
+                                id=contact_id,
+                                )
+                        oe_customers[xml_id].child_ids.append(contact_id)
+                        needs_restoring[company_id, rec.s_contact] = (contact_id, rec.s_phone, False)
+            # finally, add request
+            if rec.order_id not in existing_requests:
+                label = [rec[f] for f in ('s_contact', 's_company', 's_address') if f]
+                csz = ''
+                if rec.s_city:
+                    csz += rec.s_city
+                if rec.s_state:
+                    if csz:
+                        csz += ', ' + rec.s_state
+                    else:
+                        csz = rec.s_state
+                if rec.s_postal:
+                    if csz:
+                        csz += '  ' + rec.s_postal
+                    else:
+                        csz = rec.s_postal
+                label.append(csz)
+                if rec.s_country and rec.s_country != 'USA':
+                    label.append(rec.s_country.upper())
+                comments = rec.comments or False
+                if comments:
+                    comments = comments.replace('\\n','\n')
+                OE.sample_request.create({
+                    'ref_num': rec.order_id,
+                    'user_id': salesman_id or 1,
+                    'partner_id': company_id,
+                    'contact_id': contact_id,
+                    'create_date': rec.orderdate,
+                    'address': '\n'.join(label) or False,
+                    'request_ship': shipping_id,
+                    'ship_date': rec.ship_date or False,
+                    'comments': rec.comments or False,
+                    # 'state': 'complete',
+                    'is_historical': True,
+                    })
+                existing_requests.add(rec.order_id)
+    #
+    # adding products and lot numbers
+    #
+    print('getting products')
+    tmp_product = get_records(
+            OE.product,
+            fields=['id','xml_id','name'],
+            context={'active_test': False},
+            )
+    oe_product = {}
+    for product in tmp_product:
+        oe_product[product.xml_id] = product.id
+        oe_product[product.name] = product.id
+    print('getting lots')
+    oe_lots = dict([
+        ((l.lot_no, l.product_id and l.product_id.id), l)
+        for l in get_records(
+            OE.product_lot,
+            fields=['id','lot_no','product_id'],
+            )])
+    print('getting requests and sample products')
+    existing_requests = dict([
+        (r.ref_num, r)
+        for r in get_records(
+            OE.sample_request,
+            fields=['id','ref_num', 'product_ids'],
+            )])
+    with dbf.Table(product_lot, dbf_type='clp', default_data_types='enhanced') as requests:
+        for rec in requests:
+            if dbf.recno(rec) == 1:
+                continue
+            if rec.order_id not in existing_requests:
+                continue
+            if existing_requests[rec.order_id].product_ids:
+                # already has some, don't add more
+                continue
+            if not rec.prod_desc:
+                continue
+            prod_xmlid = prod_desc = False
+            prod_split = rec.prod_desc.split(None, 1)
+            if len(prod_split) == 2:
+                prod_xmlid, prod_desc = prod_split
+            if not prod_xmlid or len(prod_xmlid) != 8 or not prod_xmlid[:3].isalpha() or not prod_xmlid[3:].isnumeric():
+                prod_xmlid = False
+                prod_desc = rec.prod_desc
+                product_id = oe_product.get(prod_desc, False)
+                if not product_id:
+                    product_id = OE.product.create({
+                        'name': prod_desc,
+                        })
+                    oe_product[prod_desc] = product_id
+            else:
+                product_id = oe_product.get(prod_xmlid, False)
+                if not product_id:
+                    product_id = OE.product.create({
+                        'name': prod_desc,
+                        'xml_id': prod_xmlid,
+                        'module': 'NVTY',
+                        })
+                    oe_product[prod_desc] = product_id
+                    oe_product[prod_xmlid] = product_id
+            lot_record = oe_lots.get((rec.lot_no, product_id), False)
+            if not lot_record:
+                try:
+                    lot_record = AttrDict(lot_no=rec.lot_no.upper(), product_id=product_id)
+                    lot_id = OE.product_lot.create(dict(lot_record))
+                    lot_record.id = lot_id
+                except:
+                    print(lot_record, border='box')
+                    raise
+            # at this point we have a product, and a lot -- so let's make a sample.product
+            oe_sample_product = AttrDict(
+                    request_id=existing_requests[rec.order_id].id,
+                    product_id=product_id,
+                    product_lot_used_id=lot_record.id,
+                    )
+            sp_id = OE.sample_product.create(dict(oe_sample_product))
+            oe_sample_product.id = sp_id
+
 
 
 OE = AttrDict()
@@ -175,6 +340,10 @@ def connect_oe():
     OE.conn = conn = get_connection(hostname=HOST, database=DB, login=USER, password=PW)
     OE.res_partner = conn.get_model('res.partner')
     OE.res_users = conn.get_model('res.users')
+    OE.product = conn.get_model('product.product')
     OE.sample_request = conn.get_model('sample.request')
+    OE.sample_shipping = conn.get_model('sample.shipping')
+    OE.sample_product = conn.get_model('sample.product')
+    OE.product_lot = conn.get_model('wholeherb_integration.product_lot')
 
 Main()
