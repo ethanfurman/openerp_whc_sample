@@ -43,6 +43,33 @@ class sample_request(osv.Model):
                 )
         return ids
 
+    def _generate_labels(self, cr, uid, ids, context=None):
+        labels = []
+        today = datetime.datetime.strptime(
+                fields.date.today(self, cr, localtime=True),
+                DEFAULT_SERVER_DATE_FORMAT,
+                ).date().strftime('%m/%d/%Y')
+        for sample in self.browse(cr, uid, ids, context=context):
+            for product in sample.product_ids:
+                code = product.product_id.default_code.strip()
+                name = product.product_id.product_tmpl_id.name.strip()
+                if code:
+                    desc = "[%s] %s" % (code, name)
+                else:
+                    desc = name
+                labels.append(
+                        'Request: %s\n'
+                        'Date: %s\n'
+                        'Product: %s\n'
+                        'Lot: %s'
+                        % (
+                            sample.ref_num,
+                            today,
+                            desc,
+                            product.product_lot_used,
+                            ))
+        return labels
+
     def _get_address(
             self, cr, uid,
             user_id, contact_id, partner_id, ship_to_id,
@@ -220,35 +247,12 @@ class sample_request(osv.Model):
         context['sample_loop'] = True
         if isinstance(ids, (int, long)):
             ids = [ids]
-        today = datetime.datetime.strptime(
-                fields.date.today(self, cr, localtime=True),
-                DEFAULT_SERVER_DATE_FORMAT,
-                ).date().strftime('%m/%d/%Y')
-        labels = []
-        for sample in self.browse(cr, uid, ids, context=context):
-            for product in sample.product_ids:
-                code = product.product_id.default_code.strip()
-                name = product.product_id.product_tmpl_id.name.strip()
-                if code:
-                    desc = "[%s] %s" % (code, name)
-                else:
-                    desc = name
-                labels.append(
-                        'Request: %s\n'
-                        'Date: %s\n'
-                        'Product: %s\n'
-                        'Lot: %s'
-                        % (
-                            sample.ref_num,
-                            today,
-                            desc,
-                            product.product_lot_used,
-                            ))
-            values = {
-                'state': 'complete',
-                'lot_labels': '\f'.join(labels),
-                }
-            self.write(cr, uid, ids, values, context=context)
+        labels = self._generate_labels(cr, uid, ids, context=context)
+        values = {
+            'state': 'complete',
+            'lot_labels': '\f'.join(labels),
+            }
+        self.write(cr, uid, ids, values, context=context)
         self.button_sample_reprint(cr, uid, ids, context=context)
         return True
 
@@ -321,14 +325,20 @@ class sample_request(osv.Model):
                 + "{lf}" * 5
                 )
         for sample in self.browse(cr, uid, ids, context=context):
+            lot_labels = sample.lot_lables
+            if not lot_labels:
+                # historical records do not have labels generated yet, so
+                # generate them now
+                lot_labels = '\f'.join(self._generate_labels(cr, uid, [sample.id], context=context))
+                self.write(cr, uid, [sample.id], {'lot_labels': lot_labels}, context=context)
             ref_num = sample.ref_num
             # generate plain-text version
             with open('/opt/openerp/var/sample_labels/%s.txt' % ref_num, 'w') as label:
-                label.write(sample.lot_labels)
+                label.write(lot_labels)
             # generate custom Okidata version
             label_data = [
                     _label_dict(l)
-                    for l in sample.lot_labels.split('\f')
+                    for l in lot_labels.split('\f')
                     ]
             labels = [
                 _create_label(lbl, cpl=34, context=context)
