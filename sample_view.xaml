@@ -10,7 +10,7 @@
             @name: sample.request.form
             @model: sample.request
             @arch type='xml'
-                ~form $Sample_Request version='7.0' setup='onload(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
+                ~form $Sample_Request version='7.0' edit="[('is_historical','=',False)]" setup='onload(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
                         ~button @button_sample_complete $Done .oe_edit_hide type='object' attrs="{'invisible': [('state','!=','production')]}"
@@ -19,29 +19,28 @@
                     @id invisible='1'
                     @ref_num invisible='1'
                     @partner_is_company invisible='1'
+                    @is_historical invisible='1'
                     ~div .oe_title
                         ~h1
                             @ref_name attrs="{'invisible': [('id','=',False)]}"
                         ~label for="is_historical"
-                        @name="is_historical" attrs="{'readonly': [('is_historical','=',True)]}"
                     ~group col='5'
                         ~group colspan='2'
                             @user_id readonly="1" options="{'limit':15, 'create':0, 'create_edit':0}"
                             @request_type
-                             | attrs="{'readonly': [('is_historical','=',True)]]}"
                              | on_change='onchange_request_type(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                              | widget='radio'
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                            @create_date readonly='1' $Created_on attrs="{'invisible': [('id','=',False)], 'readonly': [('is_historical','=',True)]}"
+                            @create_date readonly='1' $Created_on attrs="{'invisible': [('id','=',False)]}"
                             @partner_id
-                             | attrs="{'required': ['|',('request_type','=','customer')], 'invisible': [('request_type','!=','customer'), 'readonly': [('is_historical','=',True)]]}"
+                             | attrs="{'required': ['|',('request_type','=','customer')], 'invisible': [('request_type','!=','customer')]}"
                              | context="{'show_fis': True, 'active_test': False}"
                              | domain="[('customer','=',True),('is_company','=',True),('ship_to_parent_id','=',False)]"
                              | on_change='onchange_partner_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                              | options="{'limit':15, 'create':0, 'create_edit':0}"
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @lead_id
-                             | attrs="{'required': [('request_type','=','lead')], 'invisible': [('request_type','!=','lead')], 'readonly': [('is_historical','=',True)]}"
+                             | attrs="{'required': [('request_type','=','lead')], 'invisible': [('request_type','!=','lead')]}"
                              | context="{'default_user_id': uid}"
                              | domain="['|', ('user_id','=',user_id), ('user_id','=',False)]"
                              | on_change='onchange_lead_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
@@ -50,28 +49,31 @@
                             @lead_partner $Company attrs="{'invisible': [('request_type','!=','lead')]}" readonly='1'
                             @lead_contact attrs="{'invisible': [('request_type','!=','lead')]}" readonly='1'
                             @contact_id
-                             | attrs="{'readonly': ['|',('partner_id','=',False),('is_historical','=',True)], 'invisible':['|',('request_type','=','lead'),'&','&',('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}"
+                             | attrs="{'readonly': ['|',('partner_id','=',False)], 'invisible':['|',('request_type','=','lead'),'&','&',('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}"
                              | context="{'default_parent_id':partner_id, 'combine_company':False}"
                              | on_change='onchange_contact_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                              | options="{'limit':10, 'create':0, 'create_edit':1}"
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @ship_to_id
-                             | attrs="{'readonly': ['|',('partner_id','=',False),('is_historical','=',True)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}"
+                             | attrs="{'readonly': ['|',('partner_id','=',False)], 'invisible':[('id','!=',False),('partner_id','!=',False),('partner_is_company','=',False)]}"
                              | context="{'default_ship_to_parent_id':partner_id, 'combine_company':False}"
                              | on_change='onchange_ship_to_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                              | options="{'limit':15, 'create':0, 'create_edit':1, 'no_open': True}"
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                         ~group colspan='3'
-                            @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" attrs="{'readonly': [('is_historical','=',True)]}"
-                            @address_type widget='radio' options="{'horizontal':1}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" attrs="{'readonly': [('is_historical','=',True)]}"
-                            @address $Ship_To_Address widget='text' attrs="{'readonly': [('is_historical','=',True)]}"
-                            @third_party_account $Customer_Account_No writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" attrs="{'readonly': [('is_historical','=',True)]}"
+                            @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                            @address_type widget='radio' options="{'horizontal':1}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                            @address $Ship_To_Address widget='text'
+                            @third_party_account $Customer_Account_No writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                     ~hr
                     ~label for='product_ids'
-                    @product_ids nolabel='1' context="{'tree_view_ref': 'sample.sample_product_list_full'}" attrs="{'readonly': [('is_historical','=',True)]}"
+                    @product_ids nolabel='1' context="{'tree_view_ref': 'sample.sample_product_list_full'}"
                     ~hr
                     ~group
-                            @instructions writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" attrs="{'readonly': [('is_historical','=',True)]}"
+                        ~group
+                            @instructions writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                        ~group
+                            @comments $Comments_to_customer
                     ~div .oe_chatter
                         @message_follower_ids widget='mail_followers'
                         @message_ids widget='mail_thread' nolabel='1'
