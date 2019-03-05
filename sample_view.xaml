@@ -23,7 +23,6 @@
                     ~div .oe_title
                         ~h1
                             @ref_name attrs="{'invisible': [('id','=',False)]}"
-                        ~label for="is_historical"
                     ~group col='5'
                         ~group colspan='2'
                             @user_id readonly="1" options="{'limit':15, 'create':0, 'create_edit':0}"

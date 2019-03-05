@@ -325,7 +325,7 @@ class sample_request(osv.Model):
                 + "{lf}" * 5
                 )
         for sample in self.browse(cr, uid, ids, context=context):
-            lot_labels = sample.lot_lables
+            lot_labels = sample.lot_labels
             if not lot_labels:
                 # historical records do not have labels generated yet, so
                 # generate them now
