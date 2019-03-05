@@ -40,6 +40,6 @@
         ~record #seq_sample_request model='ir.sequence'
             @name: sample sequence
             @code: sample.request
-            @number_next: 40000
+            @number_next: 45000
             @implementation: no_gap
             
