@@ -80,6 +80,7 @@ def from_access():
                 continue
             xml_id = ('00000' + rec.xml_id)[-6:]
             if xml_id not in oe_customers:
+                city, state_id, country_id = csc(rec.city, rec.state, rec.country)
                 # better add it
                 new_id = OE.res_partner.create({
                     'xml_id': xml_id,
@@ -89,10 +90,10 @@ def from_access():
                     'customer': True,
                     'phone': rec.phone,
                     'street': rec.street,
-                    'city': rec.city,
-                    'state': rec.state,
+                    'city': city,
+                    'state_id': state_id,
                     'zip': rec.postal,
-                    'country': rec.country,
+                    'country_id': country_id,
                     })
                 oe_customers[xml_id] = AttrDict({'id': new_id, 'xml_id': xml_id, 'child_ids':[]})
                 if rec.contact and rec.contact != '-':
@@ -145,7 +146,7 @@ def from_access():
             )])
     print('adding Access sample memos')
     with dbf.Table(requests, dbf_type='clp', default_data_types='enhanced') as requests:
-        # just process 2014+ for now
+        # just process 2017+ for now
         for rec in requests:
             if dbf.recno(rec) == 1:
                 continue
@@ -183,40 +184,53 @@ def from_access():
                 try:
                     xml_id = ('00000'+rec.cust_id)[-6:]
                     company = oe_customers[xml_id]
+                    company_id = company.id
+                    lead_id = None
                 except KeyError:
-                    if xml_id != '000001':
-                        print(rec, border='box')
-                    continue
-                company_id = company.id
-                if rec.s_contact:
-                    # child_ids is a list of ids
-                    existing_contacts = oe_customers[xml_id].child_ids
-                    for contact_id in existing_contacts:
-                        # if rec.s_contact == contact.name:
-                        if (company_id, rec.s_contact) in oe_contacts:
-                            # get contact record
-                            contact = oe_contacts[company_id, rec.s_contact]
-                            contact_id = contact.id
-                            if rec.s_phone != contact.phone:
-                                if (company_id, contact.name) not in needs_restoring:
-                                    needs_restoring[company_id, contact.name] = (contact.id, contact.phone, True)
-                                OE.res_partner.write(contact.id, {'phone': rec.s_phone})
-                            break
-                    else:
-                        # did not find a match, so add it
-                        contact_id = OE.res_partner.create({
-                            'name': rec.s_contact,
-                            'parent_id': company_id,
-                            'phone': rec.s_phone,
-                            })
-                        oe_contacts[company_id, rec.s_contact] = AttrDict(
-                                name=rec.s_contact,
-                                parent_id=company_id,
-                                phone=rec.s_phone,
-                                id=contact_id,
-                                )
-                        oe_customers[xml_id].child_ids.append(contact_id)
-                        needs_restoring[company_id, rec.s_contact] = (contact_id, rec.s_phone, False)
+                    # add as a lead
+                    city, state_id, country_id = csc(rec.s_city, rec.s_state, rec.s_country)
+                    lead_id = OE.crm_lead.create({
+                        'user_id': salesman_id,
+                        'name': rec.s_company.upper() or 'Sample ' + rec.order_id,
+                        'partner_name': rec.s_company or False,
+                        'contact_name': rec.s_contact or False,
+                        'phone': rec.s_phone or False,
+                        'street': rec.s_address or False,
+                        'city': city,
+                        'state_id': state_id,
+                        'zip': rec.s_postal,
+                        'country_id': country_id,
+                        })
+                else:
+                    if rec.s_contact:
+                        # child_ids is a list of ids
+                        existing_contacts = oe_customers[xml_id].child_ids
+                        for contact_id in existing_contacts:
+                            # if rec.s_contact == contact.name:
+                            if (company_id, rec.s_contact) in oe_contacts:
+                                # get contact record
+                                contact = oe_contacts[company_id, rec.s_contact]
+                                contact_id = contact.id
+                                if rec.s_phone != contact.phone:
+                                    if (company_id, contact.name) not in needs_restoring:
+                                        needs_restoring[company_id, contact.name] = (contact.id, contact.phone, True)
+                                    OE.res_partner.write(contact.id, {'phone': rec.s_phone})
+                                break
+                        else:
+                            # did not find a match, so add it
+                            contact_id = OE.res_partner.create({
+                                'name': rec.s_contact,
+                                'parent_id': company_id,
+                                'phone': rec.s_phone,
+                                })
+                            oe_contacts[company_id, rec.s_contact] = AttrDict(
+                                    name=rec.s_contact,
+                                    parent_id=company_id,
+                                    phone=rec.s_phone,
+                                    id=contact_id,
+                                    )
+                            oe_customers[xml_id].child_ids.append(contact_id)
+                            needs_restoring[company_id, rec.s_contact] = (contact_id, rec.s_phone, False)
             # finally, add request
             if rec.order_id not in existing_requests:
                 label = [rec[f] for f in ('s_contact', 's_company', 's_address') if f]
@@ -239,11 +253,9 @@ def from_access():
                 comments = rec.comments or False
                 if comments:
                     comments = comments.replace('\\n','\n')
-                OE.sample_request.create({
+                request_values = {
                     'ref_num': rec.order_id,
                     'user_id': salesman_id or 1,
-                    'partner_id': company_id,
-                    'contact_id': contact_id,
                     'create_date': rec.orderdate,
                     'address': '\n'.join(label) or False,
                     'request_ship': shipping_id,
@@ -251,7 +263,14 @@ def from_access():
                     'comments': rec.comments or False,
                     # 'state': 'complete',
                     'is_historical': True,
-                    })
+                    }
+                if lead_id is None:
+                    request_values['partner_id'] = company_id
+                    request_values['contact_id'] = contact_id
+                else:
+                    request_values['lead_id'] = lead_id
+                    request_values['request_type'] = 'lead'
+                OE.sample_request.create(request_values)
                 existing_requests.add(rec.order_id)
     #
     # adding products and lot numbers
@@ -345,5 +364,29 @@ def connect_oe():
     OE.sample_shipping = conn.get_model('sample.shipping')
     OE.sample_product = conn.get_model('sample.product')
     OE.product_lot = conn.get_model('wholeherb_integration.product_lot')
+    OE.crm_lead = conn.get_model('crm.lead')
+    global state_recs, country_recs
+    print('loading state/country records')
+    state_recs = {}
+    for r in get_records(OE.conn, 'res.country.state'):
+        state_recs[r.country_id, r.name] = r.id
+        state_recs[r.country_id, r.code] = r.id
+    country_recs = {}
+    for r in get_records(OE.conn, 'res.country'):
+        country_recs[r.name] = r.id
+        country_recs[r.code] = r.id
+
+def csc(city, state, country):
+    if country.upper() in ('', 'US', 'USA', 'UNITED STATES', 'UNITED STATES OF AMERICA'):
+        country = 'US'
+    country_id = country_recs.get(country, False)
+    state_id = state_recs.get((country_id, state), False)
+    city = [city]
+    if state_id is False:
+        city.append(state)
+    if country_id is False:
+        city.append(country)
+    city = '  '.join([p for p in city if p])
+    return city, state_id, country_id
 
 Main()
