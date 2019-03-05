@@ -373,7 +373,7 @@ class sample_request(osv.Model):
     def create(self, cr, uid, values, context=None):
         if 'ref_num' not in values:
             values['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
-        values['create_uid'] = values['write_uid'] = values['uid']
+        values['create_uid'] = values['write_uid'] = uid
         values['write_date'] = fields.datetime.now(self, cr)
         if 'create_date' not in values:
             values['create_date'] = values['write_date']
