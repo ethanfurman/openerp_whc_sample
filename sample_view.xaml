@@ -10,7 +10,7 @@
             @name: sample.request.form
             @model: sample.request
             @arch type='xml'
-                ~form $Sample_Request version='7.0' edit="[('is_historical','=',False)]" setup='onload(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
+                ~form $Sample_Request version='7.0' edit="[('is_historical','=',False),('state','!=','complete')]" setup='onload(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
                         ~button @button_sample_complete $Done .oe_edit_hide type='object' attrs="{'invisible': [('state','!=','production')]}"
@@ -96,6 +96,7 @@
                     @user_id $Sales_Person
                     @partner_id $Customer
                     @state $Request_Status
+                    @ref_num $Sample_Number
                     ~separator
                     ~filter $My_Requests @type_owner domain="[('user_id','=',uid)]" help="The samples I requested"
                     ~separator
