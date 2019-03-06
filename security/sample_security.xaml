@@ -1,19 +1,39 @@
 !!!xml
 ~openerp
-    ~data noupdate='1'
+    ~data noupdate='0'
 
         ~record model='ir.module.category' #module_sample
             @name: Sample
             @description: Create and track samples
 
         ~record model='res.groups' #group_sample_user
-            @name: User
+            @name: User: Own Requests Only
             @category_id ref='module_sample'
             @comment: User can enter Sample Department data
+
+        ~record model='res.groups' #group_sample_user_all
+            @name: User: All Requests
+            @category_id ref='module_sample'
+            @implied_ids eval="[(4, ref('sample.group_sample_user'))]"
+            @comment: User can enter Sample Department data and view other users' requests
 
         ~record model='res.groups' #group_sample_manager
             @name: Manager
             @category_id ref='module_sample'
             @comment: User has full access
-            @implied_ids eval="[(6, 0, [ref('group_sample_user')])]"
+            @implied_ids eval="[(6, 0, [ref('sample.group_sample_user_all')])]"
             @users eval="[(4, ref('base.user_root'))]"
+
+    ~data noupdate='1'
+
+        ~record model='ir.rule' #sample_rule_own_user
+            @model: sample.request
+            @model_id ref='model_sample_request'
+            @domain_force: ['|',('user_id','=',user.id),('user_id','=',False)]
+            @groups eval="[(6, 0, [ref('sample.group_sample_user'), ref('base.group_sales_salesman')])]"
+
+        ~record model='ir.rule' #sample_rule_all_user
+            @model: sample.request
+            @model_id ref='model_sample_request'
+            @domain_force: [(1,'=',1)]
+            @groups eval="[(6, 0, [ref('sample.group_sample_user_all'), ref('base.group_sales_salesman_all_leads')])]"
