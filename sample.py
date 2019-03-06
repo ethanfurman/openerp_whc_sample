@@ -51,8 +51,12 @@ class sample_request(osv.Model):
                 ).date().strftime('%m/%d/%Y')
         for sample in self.browse(cr, uid, ids, context=context):
             for product in sample.product_ids:
-                code = product.product_id.default_code.strip()
-                name = product.product_id.product_tmpl_id.name.strip()
+                code = product.product_id.default_code
+                if code:
+                    code = code.strip()
+                name = product.product_id.product_tmpl_id.name
+                if name:
+                    name = name.strip()
                 if code:
                     desc = "[%s] %s" % (code, name)
                 else:
@@ -381,7 +385,7 @@ class sample_request(osv.Model):
         return super(sample_request, self).copy(cr, uid, id, default, context)
 
     def create(self, cr, uid, values, context=None):
-        if 'ref_num' not in values:
+        if 'ref_num' not in values or not values['ref_num']:
             values['ref_num'] = self.pool.get('ir.sequence').next_by_code(cr, uid, 'sample.request', context=context)
         values['create_uid'] = values['write_uid'] = uid
         values['write_date'] = fields.datetime.now(self, cr)
