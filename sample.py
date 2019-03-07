@@ -683,3 +683,17 @@ class sample_product(osv.Model):
                     {'product_lot_used': product['product_lot_requested']},
                     context=context,
                     )
+
+class sample_label(osv.Model):
+
+    _name = 'sample.label'
+
+    _columns = {
+        'name': fields.char('Saved Name', size=128, required=True),
+        'line1': fields.char('Line 1', size=40),
+        'line2': fields.char('Line 2', size=40),
+        'line3': fields.char('Line 3', size=40),
+        'line4': fields.char('Line 4', size=40),
+        'qty': fields.integer('How many to print?'),
+        }
+
