@@ -10,3 +10,4 @@ access_sample_product_manager,sample.product manager,model_sample_product,group_
 access_sample_shipping_user,sample.shipping user,model_sample_shipping,group_sample_user,1,1,1,0
 access_sample_shipping_sales,sample.shipping sales,model_sample_shipping,base.group_sale_salesman,1,1,1,0
 access_sample_shipping_manager,sample.shipping manager,model_sample_shipping,group_sample_manager,1,1,1,1
+access_sample_label_all,sample.label all,model_sample_label,,1,1,1,1
