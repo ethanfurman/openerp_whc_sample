@@ -157,18 +157,16 @@
             @arch type='xml'
                 ~form $Label version='7.0'
                     ~header
-                        ~button @button_label_submit $Print_Labels type='object' confirm='Are you sure this looks okay?'
-                    ~div
-                        ~span
-                            ~label for='name'
-                            @name
-                            (only needed if saving label for future use)
-                    @qty
+                        ~button @button_label_print $Print_Labels type='object'
                     ~group
-                        @line1
-                        @line2
-                        @line3
-                        @line4
+                        ~group
+                            @line1 on_change="onchange_line(name, line1, line2, line3, line4)"
+                            @line2 on_change="onchange_line(name, line1, line2, line3, line4)"
+                            @line3 on_change="onchange_line(name, line1, line2, line3, line4)"
+                            @line4 on_change="onchange_line(name, line1, line2, line3, line4)"
+                        ~group
+                            @qty
+                            @name $Save_Name
 
         ~record model=view #sample_label_list
             @name: sample.label.list
@@ -191,7 +189,7 @@
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
-        ~menuitem @Custom_Labels sequence='99' parent='sample_sub' #menu_sample_label
+        ~menuitem name='Custom Labels' sequence='99' parent='sample_sub' #menu_sample_label action='sample_label_action'
 
         ~report model='sample.request' name='sample.request.report' header='True' auto='True' multi='False' xml='sample/report/sample.xml' xsl='sample/report/sample.xsl' $Sample_Request #report_sample_request_form
 

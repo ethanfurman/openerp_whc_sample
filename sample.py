@@ -697,3 +697,19 @@ class sample_label(osv.Model):
         'qty': fields.integer('How many to print?'),
         }
 
+    _defaults = {
+        'qty': 1,
+        }
+
+    def onchange_line(self, cr, uid, ids, name, line1, line2, line3, line4, context=None):
+        if name:
+            return {}
+        else:
+            return {'value': {'name': line1 or line2 or line3 or line4}}
+
+    def button_label_print(self, cr, uid, ids, context=None):
+        for label in self.browse(cr, uid, ids, context=context):
+            text = ('%s\n%s\n%s\n%s' % (label.line1, label.line2, label.line3, label.line4))
+            with open('/opt/openerp/var/sample_labels/custom_label_%s-%s.raw' % (label.id, label.qty), 'w') as disk_label:
+                disk_label.write(text)
+        return True
