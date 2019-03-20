@@ -12,12 +12,15 @@
         ~customer type='field' @partner_id.name
         ~contact type='field' @contact_name
         ~address-label type='field' @address
-        ~address-type type='selection' @address_type
-        ~ship-via type='selection' @request_ship
+        ~address-type type='field' @address_type
+        ~ship-via type='field' @request_ship.name
         ~shipping-account type='field' @third_party_account
         ~item type='zoom' @product_ids
             ~code type='field' @product_id.default_code
             ~name type='field' @product_id.name
+            ~lot-requested type='field' @product_lot_requested
+            ~lot-used type='field' @product_lot_used
+
 
 !!! xsl1.0
 ~xsl:stylesheet version='1.0' xmlns:fo='http://www.w3.org/1999/XSL/Format' xmlns:xsl='http://www.w3.org/1999/XSL/Transform'
@@ -156,15 +159,23 @@
                 ~td
                     ~xsl:value-of select='special-instructions'
         ~spacer length='0.25in'
-        ~blockTable colWidths='2in, 5in' style='item-table'
+        ~blockTable colWidths='1.5in, 3.5in, 1.0in, 1.0in' style='item-table'
             ~tr
                 ~td
                     ~xsl:text: FIS ID
                 ~td
                     ~xsl:text: Product
+                ~td
+                    ~xsl:text: Lots Requested //
+                ~td
+                    ~xsl:text: Used
             ~xsl:for-each select='item'
                 ~tr
                     ~td
                         ~xsl:value-of select='code'
                     ~td
                         ~xsl:value-of select='name'
+                    ~td
+                        ~xsl:value-of select='lot-requested'
+                    ~td
+                        ~xsl:value-of select='lot-used'
