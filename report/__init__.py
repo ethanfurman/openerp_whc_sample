@@ -1,7 +1,7 @@
 from antipathy import Path as _Path
 from xaml import Xaml as _Xaml
 
-src_dir = _Path(__file__).path or _Path('.')
+src_dir = _Path(__file__).dirname or _Path('.')
 
 for report_name in src_dir.glob('*.xaml'):
     with open(report_name) as src:
