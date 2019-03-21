@@ -519,7 +519,18 @@ class sample_request(osv.Model):
                 # this is a non-company person
                 res['value']['contact_id'] = False
                 res['domain']['contact_id'] = []
-            res['domain']['ship_to_id'] = [('ship_to_parent_id','=',partner.id)]
+            if res['domain']['contact_id']:
+                res['domain']['contact_id'].extend([
+                    '|',
+                    ('active','=',True),
+                    ('active','=',False),
+                    ])
+            res['domain']['ship_to_id'] = [
+                    ('ship_to_parent_id','=',partner.id),
+                    '|',
+                    ('active','=',True),
+                    ('active','=',False),
+                    ]
             if ship_to_id and ship_to.ship_to_parent_id != partner.id:
                 res['value']['ship_to_id'] = False
         res['value']['address'] = self._get_address(
