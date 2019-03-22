@@ -48,7 +48,7 @@ def main(host, db, user, pw):
 @Command()
 def from_access():
     "imports historical sample requests from Access database"
-    base = Path('/home/ethan/EvS/WholeHerb/converting/Sample_memo_db_')
+    base = Path('/home/ethan/Access_transfer/converting/Sample_memo_db_')
     # customer w/main information
     customer = base + 'Customers_stage3'
     # requests with shipping information (link to customer)
