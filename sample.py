@@ -534,6 +534,17 @@ class sample_request(osv.Model):
                     ]
             if ship_to_id and ship_to.ship_to_parent_id != partner.id:
                 res['value']['ship_to_id'] = False
+            elif not ship_to_id:
+                # get default ship-to id if there is one
+                ship_tos = self.read(
+                        cr, uid,
+                        res['domain']['ship_to_id'],
+                        fields=['id','name'],
+                        context=context,
+                        )
+                if ship_tos:
+                    ship_tos.sort(lambda s: s['name'])
+                    res['value']['ship_to_id'] = ship_tos[0]['id']
         res['value']['address'] = self._get_address(
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
