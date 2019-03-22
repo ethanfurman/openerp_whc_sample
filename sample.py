@@ -86,6 +86,7 @@ class sample_request(osv.Model):
             label = ''
             if contact_id:
                 label += res_partner.browse(cr, uid, contact_id, context=context).name + '\n'
+            label += res_partner.browse(cr, uid, partner_id, context=context).name + '\n'
             ship_to = res_partner.browse(cr, uid, ship_to_id, context=context)
             label += res_partner._display_address(cr, uid, ship_to, context=context)
         elif lead_id:
