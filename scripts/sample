@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 from antipathy import Path
-from openerplib import get_connection, get_records, AttrDict
+from openerplib import get_connection, get_records, AttrDict, Query
 from scription import *
 import dbf
 import os
@@ -12,7 +12,7 @@ CONFIG = Path('%s/config/fnx.ini' % virtualenv)
 
 
 try:
-    settings = OrmFile(CONFIG, section='openerp')
+    settings = OrmFile(CONFIG)
 except Exception:
     print('WARNING: unable to process configfile; all parameters must be specified', verbose=0)
     HOST = ''
@@ -20,10 +20,10 @@ except Exception:
     DB = ''
     PW = ''
 else:
-    HOST = settings.host
-    USER = settings.user
-    DB = settings.db
-    PW = settings.pw
+    HOST = settings.openerp.host
+    USER = settings.openerp.user
+    DB = settings.openerp.db
+    PW = settings.openerp.pw
 
 @Script(
         host=Spec('host where OpenERP instance is running', OPTION, default=HOST),
@@ -44,6 +44,31 @@ def main(host, db, user, pw):
         if not module[req]:
             raise SystemExit('%r required; use --help for more info' % req)
 
+@Command()
+def sample_update():
+    Path.chdir('/home/ethan/Access_transfer')
+    echo('rsync')
+    job = Execute('/usr/bin/rsync root@192.168.2.200:/mnt/virtualxp/Sample_memo_db.20161205.mdb /home/ethan/Access_transfer/ -v', pty=True, password=settings.network.pw)
+    echo(job.stdout)
+    echo(job.stderr)
+    echo('convert')
+    job = Execute('/home/ethan/Access_transfer/convert initial sample Sample_memo_db.20161205.mdb')
+    echo(job.stdout)
+    echo(job.stderr)
+    Path.chdir('/home/ethan/Access_transfer/converting')
+    echo('stage 1')
+    job = Execute('/home/ethan/Access_transfer/converting/Sample_memo_db_stage1 next-stage')
+    echo(job.stdout)
+    echo(job.stderr)
+    echo('stage 2')
+    job = Execute('/home/ethan/Access_transfer/converting/Sample_memo_db_stage2 next-stage')
+    echo(job.stdout)
+    echo(job.stderr)
+    Path.chdir('/opt/openerp/openerp/addons/sample/scripts')
+    echo('from-access')
+    job = Execute('/opt/openerp/openerp/addons/sample/scripts/sample from-access --host=192.168.2.243 --db=wholeherb -v')
+    echo(job.stdout)
+    echo(job.stderr)
 
 @Command()
 def from_access():
@@ -150,7 +175,7 @@ def from_access():
         for rec in requests:
             if dbf.recno(rec) == 1:
                 continue
-            if not rec.orderdate.startswith(('2017','2018','2019')):
+            if not rec.orderdate.startswith(('2018', '2019', )):
                 continue
             if rec.order_id in existing_requests:
                 continue
@@ -273,7 +298,7 @@ def from_access():
                 OE.sample_request.create(request_values)
                 existing_requests.add(rec.order_id)
     #
-    # adding products and lot numbers
+    # adding products
     #
     print('getting products')
     tmp_product = get_records(
@@ -285,13 +310,6 @@ def from_access():
     for product in tmp_product:
         oe_product[product.xml_id] = product.id
         oe_product[product.name] = product.id
-    print('getting lots')
-    oe_lots = dict([
-        ((l.lot_no, l.product_id and l.product_id.id), l)
-        for l in get_records(
-            OE.product_lot,
-            fields=['id','lot_no','product_id'],
-            )])
     print('getting requests and sample products')
     existing_requests = dict([
         (r.ref_num, r)
@@ -299,24 +317,26 @@ def from_access():
             OE.sample_request,
             fields=['id','ref_num', 'product_ids'],
             )])
-    with dbf.Table(product_lot, dbf_type='clp', default_data_types='enhanced') as requests:
-        for rec in requests:
-            if dbf.recno(rec) == 1:
+    requests_added = 0
+    with dbf.Table(product_lot, dbf_type='clp', default_data_types='enhanced') as access_requests:
+        for access_rec in access_requests:
+            if dbf.recno(access_rec) == 1:
                 continue
-            if rec.order_id not in existing_requests:
+            if access_rec.order_id not in existing_requests:
                 continue
-            if existing_requests[rec.order_id].product_ids:
+            if existing_requests[access_rec.order_id].product_ids:
                 # already has some, don't add more
                 continue
-            if not rec.prod_desc:
+            if not access_rec.prod_desc:
                 continue
+            requests_added += 1
             prod_xmlid = prod_desc = False
-            prod_split = rec.prod_desc.split(None, 1)
+            prod_split = access_rec.prod_desc.split(None, 1)
             if len(prod_split) == 2:
                 prod_xmlid, prod_desc = prod_split
             if not prod_xmlid or len(prod_xmlid) != 8 or not prod_xmlid[:3].isalpha() or not prod_xmlid[3:].isnumeric():
                 prod_xmlid = False
-                prod_desc = rec.prod_desc
+                prod_desc = access_rec.prod_desc
                 product_id = oe_product.get(prod_desc, False)
                 if not product_id:
                     product_id = OE.product.create({
@@ -333,25 +353,26 @@ def from_access():
                         })
                     oe_product[prod_desc] = product_id
                     oe_product[prod_xmlid] = product_id
-            lot_record = oe_lots.get((rec.lot_no, product_id), False)
-            if not lot_record:
-                try:
-                    lot_record = AttrDict(lot_no=rec.lot_no.upper(), product_id=product_id)
-                    lot_id = OE.product_lot.create(dict(lot_record))
-                    lot_record.id = lot_id
-                except:
-                    print(lot_record, border='box')
-                    raise
-            # at this point we have a product, and a lot -- so let's make a sample.product
+            assert isinstance(product_id, (int, long)), "product id is not int-like: %r" % (product_id, )
+            # at this point we have a product -- so let's make a sample.product
             oe_sample_product = AttrDict(
-                    request_id=existing_requests[rec.order_id].id,
+                    request_id=existing_requests[access_rec.order_id].id,
                     product_id=product_id,
-                    product_lot_used_id=lot_record.id,
                     )
             sp_id = OE.sample_product.create(dict(oe_sample_product))
             oe_sample_product.id = sp_id
-
-
+    # now mark all historical records as complete
+    request_ids = [
+            r.id
+            for r in Query(
+                OE.sample_request,
+                domain=[('is_historical','=',True),('state','=','draft')],
+                fields=['id'],
+                ).records
+                ]
+    OE.sample_request.write(request_ids, {'state':'complete'}, context={'sample_loop':True})
+    print('%d requests added' % requests_added)
+    print('        completed: %5d' % len(request_ids))
 
 OE = AttrDict()
 
