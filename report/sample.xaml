@@ -9,6 +9,7 @@
         ~create-date type='field' @create_date
         ~submit-date type='field' @submit_datetime
         ~special-instructions type='field' @instructions
+        ~comments type='field' @comments
         ~customer type='field' @partner_id.name
         ~contact type='field' @contact_name
         ~address-label type='field' @address
@@ -61,6 +62,12 @@
                     ~blockValign value='TOP'
                     ~blockAlignment value='LEFT'
                     ~lineStyle kind='BOX' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
+                ~blockTableStyle id='border-cell'
+                    ~blockFont name='Helvetica' size='9'
+                    ~blockValign value='TOP'
+                    ~blockAlignment value='LEFT'
+                    ~lineStyle kind='BOX' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
+                    ~lineStyle kind='LINEAFTER' thickness='0.5'  colorName='black' start='0,0' stop='-1,-1'
                 ~paraStyle name='nospace' fontName='Courier' fontSize='9' spaceAfter='0' spaceBefore='0'
             ~story
                 ~setNextTemplate name='other_pages'
@@ -68,10 +75,10 @@
                 ~xsl:apply-templates select='detail'
 
     ~xsl:template name='first_page_frames'
-        ~frame id='details1' x1='0.75in' y1='0.75in' width='7.0in' height='9.0in'
+        ~frame id='details1' x1='0.5in' y1='0.5in' width='7.5in' height='9.0in'
 
     ~xsl:template name='other_pages_frames'
-        ~frame id='details2' x1='0.75in' y1='0.75in' width='7.0in' height='9.0in'
+        ~frame id='details2' x1='0.5in' y1='0.5in' width='7.5in' height='9.0in'
 
     ~xsl:template match='report'
         ~setFont name='Helvetica' size='12'
@@ -151,15 +158,15 @@
                             ~td
                                 ~xsl:value-of select='address-label'
         ~spacer length='0.25in'
-        ~blockTable colWidths='7in' style='border-table'
+        ~blockTable colWidths='3.25in, 4.0in' style='border-cell'
             ~tr
-                ~td
-                    ~xsl:text: Special Instructions:
+                ~td : ~xsl:text: Special Instructions:
+                ~td : ~xsl:text: Comments to Customer:
             ~tr
-                ~td
-                    ~xsl:value-of select='special-instructions'
+                ~td : ~xsl:value-of select='special-instructions'
+                ~td : ~xsl:value-of select='comments'
         ~spacer length='0.25in'
-        ~blockTable colWidths='1.5in, 3.5in, 1.0in, 1.0in' style='item-table'
+        ~blockTable colWidths='1.5in, 3.5in, 1.25in, 1.25in' style='item-table'
             ~tr
                 ~td
                     ~xsl:text: FIS ID
@@ -179,3 +186,4 @@
                         ~xsl:value-of select='lot-requested'
                     ~td
                         ~xsl:value-of select='lot-used'
+
