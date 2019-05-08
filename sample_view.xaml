@@ -82,6 +82,7 @@
             @model: sample.request
             @arch type='xml'
                 ~tree $Sample_Request
+                    @ref_num
                     @create_date
                     @tree_contact $Contact
                     @tree_company $Company
