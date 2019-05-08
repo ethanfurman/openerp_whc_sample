@@ -51,6 +51,8 @@ class sample_request(osv.Model):
                 ).date().strftime('%m/%d/%Y')
         for sample in self.browse(cr, uid, ids, context=context):
             for product in sample.product_ids:
+                if not product.product_id:
+                    continue
                 code = product.product_id.default_code
                 if code:
                     code = code.strip()
@@ -70,7 +72,7 @@ class sample_request(osv.Model):
                             sample.ref_num,
                             today,
                             desc,
-                            product.product_lot_used,
+                            product.product_lot_requested or '',
                             ))
         return labels
 
@@ -691,7 +693,7 @@ class sample_product(osv.Model):
         'name': fields.related('product_id', 'name', type='char', size=128),
         'request_id': fields.many2one('sample.request', string='Request'),
         'request_state': fields.related('request_id','state', type='char'),
-        'product_id': fields.many2one('product.product', string='Item', domain=[('categ_id','child_of','Saleable')]),
+        'product_id': fields.many2one('product.product', string='Item', domain=[('categ_id','child_of','Saleable')], required=True),
         'product_lot_requested': fields.char('Lot # Requested', size=24),
         'product_lot_used': fields.char('Lot # Used', size=24, oldname='product_lot'),
         }
