@@ -341,6 +341,9 @@ class sample_request(osv.Model):
             # generate plain-text version
             with open('/opt/openerp/var/sample_labels/%s.txt' % ref_num, 'w') as label:
                 label.write(lot_labels)
+            # generate backup plain-text version for troubleshooting
+            with open('/opt/openerp/var/sample_labels/%s.src' % ref_num, 'w') as label:
+                label.write(lot_labels)
             # generate custom Okidata version
             label_data = [
                     _label_dict(l)
