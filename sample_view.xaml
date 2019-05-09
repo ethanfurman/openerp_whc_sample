@@ -82,7 +82,7 @@
             @model: sample.request
             @arch type='xml'
                 ~tree $Sample_Request
-                    @ref_num
+                    @ref_num $Reference
                     @create_date
                     @tree_contact $Contact
                     @tree_company $Company
@@ -186,11 +186,56 @@
 
         ~menuitem @Samples #sample_main
         ~menuitem @Samples sequence='10' parent='sample_main' #sample_sub
-        ~menuitem @Samples sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
+        ~menuitem @Requests sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
+        ~menuitem @Samples sequence='40' parent='sample_sub' action='individual_sample_action' #menu_sample_individual
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
         ~menuitem name='Custom Labels' sequence='99' parent='sample_sub' #menu_sample_label action='sample_label_action'
 
         ~report model='sample.request' name='sample.request.report' header='True' auto='True' multi='False' xml='sample/report/sample.xml' xsl='sample/report/sample.xsl' $Sample_Request #report_sample_request_form
+
+        ~record model=view #sample_product_lot_form
+            @name: sample.product_lot.form
+            @model: sample.product
+            @arch type='xml'
+                ~form $Sample_Product version='7.0' edit='0'
+
+        ~record model=view #sample_product_lot_list
+            @name: sample.product_lot.list
+            @model: sample.product
+            @arch type='xml'
+                ~tree $Sample_Request
+        ~record model=view #sample_product_lot_filter
+            @name: sample.product_lot.search
+            @model: sample.product
+            @arch type='xml'
+                ~search $Search_Sample_Request
+                    @user_id $Sales_Person
+                    @partner_id $Customer
+                    @state $Request_Status
+                    @ref_num $Sample_Number
+                    ~separator
+                    ~filter $My_Requests @type_owner domain="[('user_id','=',uid)]" help="The samples I requested"
+                    ~separator
+                    ~filter $Draft_Requests @type_draft domain="[('state','=','draft')]"
+                    ~filter $Active_Requests @type_active domain="[('state','not in',['draft','complete'])]"
+                    ~filter $Complete_Requests @type_complete domain="[('state','=','complete')]"
+
+        ~record model=act_window #sample_request_history_action
+            @name: Sample Request History
+            @res_model: sample.request
+            @view_type: form
+            @view_mode: tree,form
+            @context: {'search_default_type_complete': 1}
+
+        ~record model=act_window #sample_request_action
+            @name: Sample Request
+            @res_model: sample.request
+            @view_type: form
+            @view_mode: tree,form
+            @search_view_id ref='sample_search_filter'
+            @context: {'combine_company': False, 'search_default_type_owner': 1, 'search_default_type_draft': 1, 'search_default_type_active': 1}
+
+        ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sample_request_action'
 
