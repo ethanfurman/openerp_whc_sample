@@ -225,8 +225,7 @@ class sample_request(osv.Model):
             ),
         'tree_company': fields.function(
             _get_tree_contacts, type='char', size=64, multi='tree', string='Tree Company',
-            store = False,
-            # store={'sample.request': (self_ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
+            store={'sample.request': (self_ids, ['contact_id', 'lead_id', 'partner_id'], 10)},
             ),
         'submit_datetime': fields.datetime('Date Submitted', track_visibility='onchange'),
         # fields needed for shipping
@@ -738,3 +737,4 @@ class sample_label(osv.Model):
             with open('/opt/openerp/var/sample_labels/custom_label_%s-%s.raw' % (label.id, label.qty), 'w') as disk_label:
                 disk_label.write(text)
         return True
+
