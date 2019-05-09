@@ -64,10 +64,10 @@ class sample_request(osv.Model):
                 else:
                     desc = name
                 labels.append(
-                        'request: %s\n'
-                        'date: %s\n'
-                        'product: %s\n'
-                        'lot: %s'
+                        'Request: %s\n'
+                        'Date: %s\n'
+                        'Product: %s\n'
+                        'Lot: %s'
                         % (
                             sample.ref_num,
                             today,
