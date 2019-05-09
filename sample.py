@@ -64,10 +64,10 @@ class sample_request(osv.Model):
                 else:
                     desc = name
                 labels.append(
-                        'Request: %s\n'
-                        'Date: %s\n'
-                        'Product: %s\n'
-                        'Lot: %s'
+                        'request: %s\n'
+                        'date: %s\n'
+                        'product: %s\n'
+                        'lot: %s'
                         % (
                             sample.ref_num,
                             today,
@@ -299,10 +299,10 @@ class sample_request(osv.Model):
             [description]
             [lot number]
             """
-            ref = data['Request']
-            date = data['Date']
-            prod = data['Product']
-            lot = data['Lot']
+            ref = data['request']
+            date = data['date']
+            prod = data['product']
+            lot = data['lot']
             label = []
             label.extend([
                     "Request: {bold}%s{justify:right}%s{/bold}\n\n" % (ref, date),
@@ -740,4 +740,3 @@ class sample_label(osv.Model):
             with open('/opt/openerp/var/sample_labels/custom_label_%s-%s.raw' % (label.id, label.qty), 'w') as disk_label:
                 disk_label.write(text)
         return True
-
