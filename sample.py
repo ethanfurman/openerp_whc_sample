@@ -696,8 +696,7 @@ class sample_product(osv.Model):
         'request_id': fields.many2one('sample.request', string='Request'),
         'request_state': fields.related('request_id','state', type='char'),
         'product_id': fields.many2one('product.product', string='Item', domain=[('categ_id','child_of','Saleable')], required=True),
-        'product_lot_requested': fields.char('Lot # Requested', size=24),
-        'product_lot_used': fields.char('Lot # Used', size=24, oldname='product_lot'),
+        'product_lot': fields.char('Lot #', size=24, oldname='product_lot_requested'),
         }
 
     def button_same_lot_no(self, cr, uid, ids, context=None):

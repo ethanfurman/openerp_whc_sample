@@ -135,13 +135,8 @@
                      | domain="[('id','!=',0)]"
                      | options="{'create':false, 'create_edit':false, 'limit':15}"
                      | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                    @product_lot_requested
+                    @product_lot
                      | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                    ~button
-                     | @button_same_lot_no string="▶" .oe_edit_only type='object'
-                     | attrs="{'invisible': ['|','|',('request_state','!=','production'),('product_lot_requested','=',False),('product_lot_used','!=', False)]}"
-                    @product_lot_used
-                     | writeonly="groups('sample.group_sample_user')"
 
         ~record model=view #sample_product_list
             @name: sample.product.list
@@ -150,7 +145,7 @@
             @arch type='xml'
                 ~tree $Products editable='bottom'
                     @product_id options="{'create':false, 'create_edit':false, 'limit':15}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                    @product_lot_requested writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                    @product_lot writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
 
         ~record model=view #sample_label_form
             @name: sample.label.form
