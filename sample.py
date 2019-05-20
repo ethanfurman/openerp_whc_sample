@@ -692,9 +692,12 @@ class sample_product(osv.Model):
     _name = 'sample.product'
 
     _columns = {
-        'name': fields.related('product_id', 'name', type='char', size=128),
-        'request_id': fields.many2one('sample.request', string='Request'),
-        'request_state': fields.related('request_id','state', type='char'),
+        'name': fields.related('product_id', 'name', string='Product', type='char', size=128, store=True),
+        'request_id': fields.many2one('sample.request', string='Request', ondelete='cascade'),
+        'request_ref_num': fields.related('request_id','ref_num', string='Request #', type='char', size=12, store=True),
+        'request_state': fields.related('request_id','state', string='Request Status', type='char', store=True),
+        'request_company': fields.related('request_id','tree_company', string='Request Company', type='char', size=128, store=True),
+        'request_contact': fields.related('request_id','tree_contact', string='Request Contact', type='char', size=128, store=True),
         'product_id': fields.many2one('product.product', string='Item', domain=[('categ_id','child_of','Saleable')], required=True),
         'product_lot': fields.char('Lot #', size=24, oldname='product_lot_requested'),
         }

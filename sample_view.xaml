@@ -143,9 +143,30 @@
             @model: sample.product
             @priority eval='10'
             @arch type='xml'
-                ~tree $Products editable='bottom'
-                    @product_id options="{'create':false, 'create_edit':false, 'limit':15}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
-                    @product_lot writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                ~tree $Products edit='0' create='0'
+                    @product_id options="{'limit':15}"
+                    @product_lot
+                    @request_company
+                    @request_ref_num
+
+        ~record model=view #sample_product_form
+            @name: sample.product.form
+            @model: sample.product
+            @priority eval='10'
+            @arch type='xml'
+                ~form $Products version='7.0' edit='0' create='0'
+                    ~group
+                        ~group
+                            @request_id
+                            @request_ref_num
+                            @request_company
+                            @request_contact
+                            @request_state
+                            @request_comments
+                        ~group
+                            @name
+                            @product_id
+                            @product_lot
 
         ~record model=view #sample_label_form
             @name: sample.label.form
@@ -188,4 +209,15 @@
         ~menuitem name='Custom Labels' sequence='99' parent='sample_sub' #menu_sample_label action='sample_label_action'
 
         ~report model='sample.request' name='sample.request.report' header='True' auto='True' multi='False' xml='sample/report/sample.xml' xsl='sample/report/sample.xsl' $Sample_Request #report_sample_request_form
+
+        // add unrestricted view to Settings menu
+
+        ~record #all_sample_product_view model='ir.actions.act_window'
+            @name: Sample Product
+            @res_model: sample.product
+            @view_type: form
+            @view_mode: tree,form
+
+        ~menuitem name='Sample Product' #menu_all_sample_product parent='base.next_id_4' action='all_sample_product_view'
+
 
