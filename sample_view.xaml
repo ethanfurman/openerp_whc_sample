@@ -162,7 +162,6 @@
                             @request_company
                             @request_contact
                             @request_state
-                            @request_comments
                         ~group
                             @name
                             @product_id
