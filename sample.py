@@ -72,7 +72,7 @@ class sample_request(osv.Model):
                             sample.ref_num,
                             today,
                             desc,
-                            product.product_lot_requested or '',
+                            product.product_lot or '',
                             ))
         return labels
 
@@ -384,7 +384,7 @@ class sample_request(osv.Model):
             product_ids.append((
                 0, 0, {
                 'product_id': p.product_id.id,
-                'product_lot_requested': p.product_lot_requested,
+                'product_lot': p.product_lot,
                 }))
         default['product_ids'] = product_ids
         return super(sample_request, self).copy(cr, uid, id, default, context)
