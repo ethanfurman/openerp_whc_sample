@@ -144,7 +144,7 @@ class sample_request(osv.Model):
         # get changed records
         for rec in self.browse(cr, uid, ids, context=context):
             id = rec.id
-            for field in ('contact_id', 'lead_id', 'partner_id'):
+            for field in ('ship_to_id', 'contact_id', 'lead_id', 'partner_id'):
                 if rec[field] and rec[field].phone:
                     res[id] = rec[field].phone
                     break
@@ -210,7 +210,7 @@ class sample_request(osv.Model):
             size=32,
             string='Telephone',
             store={
-                'sample.request': (self_ids, ['partner_id', 'contact_id', 'lead_id'], 10),
+                'sample.request': (self_ids, ['partner_id', 'contact_id', 'lead_id', 'ship_to_id'], 10),
                 'res.partner': (_changed_res_partner_phone_ids, ['phone'], 20),
                 },
             ),
@@ -449,7 +449,7 @@ class sample_request(osv.Model):
                 )
         res['value']['phone'] = self._get_phone(
                 cr, uid,
-                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                (('res.partner', ship_to_id), ('res.partner', ship_to_id), ('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
                 context=context,
                 )
         return res
@@ -482,7 +482,7 @@ class sample_request(osv.Model):
                 )
         res['value']['phone'] = self._get_phone(
                 cr, uid,
-                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                (('res.partner', ship_to_id), ('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
                 context=context,
                 )
         return res
@@ -557,7 +557,7 @@ class sample_request(osv.Model):
                 )
         res['value']['phone'] = self._get_phone(
                 cr, uid,
-                (('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
+                (('res.partner', ship_to_id), ('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
                 context=context,
                 )
         return res
@@ -597,6 +597,11 @@ class sample_request(osv.Model):
                 cr, uid,
                 user_id, contact_id, partner_id, ship_to_id,
                 request_type, lead_id, lead_partner, lead_contact,
+                context=context,
+                )
+        res['value']['phone'] = self._get_phone(
+                cr, uid,
+                (('res.partner', ship_to_id), ('res.partner', contact_id), ('crm.lead', lead_id), ('res.partner', partner_id)),
                 context=context,
                 )
         return res
