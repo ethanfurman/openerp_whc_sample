@@ -59,6 +59,7 @@
                              | on_change='onchange_ship_to_id(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                              | options="{'limit':15, 'create':0, 'create_edit':1, 'no_open': True}"
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                            @phone
                         ~group colspan='3'
                             @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @address_type widget='radio' options="{'horizontal':1}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
