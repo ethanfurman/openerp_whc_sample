@@ -12,6 +12,7 @@
         ~comments type='field' @comments
         ~customer type='field' @partner_id.name
         ~contact type='field' @contact_name
+        ~phone type='field' @phone
         ~address-label type='field' @address
         ~address-type type='field' @address_type
         ~ship-via type='field' @request_ship.name
@@ -19,8 +20,8 @@
         ~item type='zoom' @product_ids
             ~code type='field' @product_id.default_code
             ~name type='field' @product_id.name
-            ~lot-requested type='field' @product_lot_requested
-            ~lot-used type='field' @product_lot_used
+            ~lot-requested type='field' @product_lot
+            ~country type='merge' sep='\n' sort='desc' field='name' @product_lot_cofo_ids
 
 
 !!! xsl1.0
@@ -134,6 +135,11 @@
                                 ~xsl:text: Contact
                             ~td
                                 ~xsl:value-of select='contact'
+                        ~tr
+                            ~td
+                                ~xsl:text: Phone
+                            ~td
+                                ~xsl:value-of select='phone'
                 ~td
                 ~td
                     ~blockTable colWidths='99, 162' style='left'
@@ -173,9 +179,9 @@
                 ~td
                     ~xsl:text: Product
                 ~td
-                    ~xsl:text: Lots Requested //
+                    ~xsl:text: Lots Requested
                 ~td
-                    ~xsl:text: Used
+                    ~xsl:text: Origin
             ~xsl:for-each select='item'
                 ~tr
                     ~td
@@ -185,5 +191,5 @@
                     ~td
                         ~xsl:value-of select='lot-requested'
                     ~td
-                        ~xsl:value-of select='lot-used'
+                        ~xsl:value-of select='country'
 
