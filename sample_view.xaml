@@ -61,7 +61,7 @@
                              | writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @phone
                         ~group colspan='3'
-                            @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
+                            @request_ship writeonly="groups('base.group_sale_salesman,sample.group_sample_user')" options="{'limit':15, 'create':0, 'create_edit':0}"
                             @address_type widget='radio' options="{'horizontal':1}" writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                             @address $Ship_To_Address widget='text'
                             @third_party_account $Customer_Account_No writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
@@ -124,6 +124,37 @@
         ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sample_request_action'
 
         ~menuitem @Samples sequence='99' parent='base.menu_base_config' groups='base.group_sale_manager' #menu_sample_config
+
+        // Ship-via views
+
+        ~record model=view #sample_ship_via_form
+            @name: sample.shipping.form
+            @model: sample.shipping
+            @arch type='xml'
+                ~form $Ship_Via version='7.0'
+                    ~group
+                        ~group
+                            @name
+                            @days
+                            @guaranteed_by
+                        ~group
+                            @active
+
+        ~record model=view #sample_ship_via_list
+            @name: sample.shipping.list
+            @model: sample.shipping
+            @arch type='xml'
+                ~tree $Ship_Via
+                    @name
+                    @guaranteed_by
+
+        ~record model=act_window #sample_ship_via_action
+            @name: Ship-via Options
+            @res_model: sample.shipping
+            @view_type: form
+            @view_mode: tree,form
+
+        // Product list in sample menu
 
         ~record model=view #sample_product_list_full
             @name: sample.product.list
@@ -205,6 +236,7 @@
         ~menuitem @Samples sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
+        ~menuitem @Ship_Via sequence='35' parent='sample_sub' action='sample_ship_via_action' #menu_sample_ship_via
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
         ~menuitem name='Custom Labels' sequence='99' parent='sample_sub' #menu_sample_label action='sample_label_action'
 

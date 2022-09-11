@@ -231,7 +231,7 @@ class sample_request(osv.Model):
         # fields needed for shipping
         'address': fields.text(string='Shipping Label'),
         'address_type': fields.selection([('business', 'Commercial'), ('personal', 'Residential')], string='Address type', required=False, track_visibility='onchange'),
-        'request_ship': fields.many2one('sample.shipping', string='Ship Via', required=False, track_visibility='onchange'),
+        'request_ship': fields.many2one('sample.shipping', string='Ship Via', required=False, track_visibility='onchange', ondelete='restrict'),
         'third_party_account': fields.char('3rd Party Account Number', size=64, track_visibility='onchange'),
         'ship_date': fields.date('Date Shipped'),
         # products to sample
