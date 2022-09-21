@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # imports
-from fnx.oe import Proposed
+from fnx.oe import Proposed, MergeSelected
 from openerp import SUPERUSER_ID
 from openerp.osv import fields, osv
 from openerp.exceptions import ERPError
@@ -646,7 +646,11 @@ class sample_request(osv.Model):
             context = {}
         values['write_uid'] = uid
         values['write_date'] = fields.datetime.now(self, cr)
-        if ids and not context.get('sample_loop'):
+        skip_checks = (
+                uid == SUPERUSER_ID and context.get('maintenance')
+                or context.get('sample_loop')
+                )
+        if ids and not skip_checks:
             complete = False
             if isinstance(ids, (int, long)):
                 ids = [ids]
@@ -675,9 +679,10 @@ class sample_request(osv.Model):
         return super(sample_request, self).write(cr, uid, ids, values, context=context)
 
 
-class sample_shipping(osv.Model):
+class sample_shipping(MergeSelected, osv.Model):
 
     _name = 'sample.shipping'
+    _order = 'name asc'
 
     _columns = {
             'name': fields.char('Shipping Method', size=128, required=True),

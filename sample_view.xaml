@@ -252,4 +252,22 @@
 
         ~menuitem name='Sample Product' #menu_all_sample_product parent='base.next_id_4' action='all_sample_product_view'
 
+        // ship-via `more` actions
+
+        ~record model='ir.actions.server' #action_sample_ship_via_merge
+            @name: Merge records
+            @type: ir.actions.server
+            @model_id ref='model_sample_shipping'
+            @state: code
+            @code: self.merge(cr, uid, context.get('active_ids'), ['name','active','days','guaranteed_by'], context=context)
+
+        ~record model='ir.values' #value_sample_ship_via_merge
+            @name: Merge selected records
+            @action_id ref='action_sample_ship_via_merge'
+            @value eval="'ir.actions.server,' + str(ref('action_sample_ship_via_merge'))"
+            @key: action
+            @model_id ref='model_sample_shipping'
+            @model: sample.shipping
+            @key2: client_action_multi
+
 
