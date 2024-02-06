@@ -1,4 +1,61 @@
 # -*- coding: utf-8 -*-
+"""
+Summary
+=======
+Sample orders, shipping methods, and custom labels.
+
+---
+
+Tables
+======
+
+--> **Samples** [[*sample.request*]] -- track samples sent to customers
+--| - **Status** [[*state*]] -- draft / production / complete
+--| - **Reference Sequence** [[*ref_num]]
+--| - **Reference Name** [[*ref_name*]] -- `Ref # - Customer #`
+--| - **Requested by** [[*user_id*]]
+--| - **Comments**
+--| - **Special Instructions** [[*instructions*]]
+--| - **Company** [[*partner_id*]]
+--| - **Partner is Company**
+--| - **Contact** [[*contact_id*]]
+--| - **Contact Name**
+--| - **Lead** [[*lead_id*]]
+--| - **Lead Company** [[*lead_partner*]]
+--| - **Lead Contact**
+--| - **Telephone** [[*phone*]]
+--| - **Ship to** [[*ship_to_id*]]
+--| - **Request Type** -- Existing/New Customer
+--| - **Date Submitted** [[*submit_date*]]
+--| - **Shipping Label** [[*address*]]
+--| - **Address Type** -- Commercial / Residential
+--| - **Ship Via** [[*request_ship*]]
+--| - **3rd Party Account Number** [[*third_party_account*]]
+--| - **Date Shipped** [[*ship_date*]]
+--| - **Items** [[*product_ids*]]
+--| - **Lot# Labels** [[*lot_labels*]]
+--| - **Historical Record** [[*is_historical*]]
+
+--> **Sample Product Lots** [[*sample.product*]] -- linking table between `product.product` and `sample.request`
+--| - **Product** [[*name*]]
+--| - **Request** [[*request_id*]]
+--| - **Item** [[*product_id*]]
+--| - **Lot#** [[*product_lot*]]
+
+--> **Ship Via** [[*sample.shipping*]] -- possible shipping services
+--| - **Shipping Method** [[*name*]]
+--| - **Available Method?** [[*active*]]
+--| - **Days** -- how many days to get there
+--| - **Guaranteed by** -- which part of the day this method is guaranteed to arrive by
+
+--> **Custom Labels** [[*sample.label*]] -- manually entered labels
+--| - **Saved Name** [[*name*]] -- name of custom label
+--| - **Line 1**
+--| - **Line 2**
+--| - **Line 3**
+--| - **Line 4**
+--| - **How many to print?** [[*qty*]]
+"""
 
 # imports
 from fnx.oe import Proposed, MergeSelected
@@ -137,21 +194,6 @@ class sample_request(osv.Model):
                 return data['phone']
         return False
 
-    def _get_telephone_nos(self, cr, uid, ids, field_name, arg, context=None):
-        res = {}
-        if field_name != 'phone':
-            return res
-        # get changed records
-        for rec in self.browse(cr, uid, ids, context=context):
-            id = rec.id
-            for field in ('ship_to_id', 'contact_id', 'lead_id', 'partner_id'):
-                if rec[field] and rec[field].phone:
-                    res[id] = rec[field].phone
-                    break
-            else:
-                res[id] = False
-        return res
-
     def _get_tree_contacts(self, cr, uid, ids, field_names, arg, context=None):
         if isinstance(ids, (int, long)):
             ids = [ids]
@@ -204,16 +246,7 @@ class sample_request(osv.Model):
         'lead_id': fields.many2one('crm.lead', 'Lead', track_visibility='onchange', ondelete='restrict'),
         'lead_partner': fields.related('lead_id', 'partner_name', string='Lead Company', type='char', size=64),
         'lead_contact': fields.related('lead_id', 'contact_name', string='Lead Contact', type='char', size=64),
-        'phone': fields.function(
-            _get_telephone_nos,
-            type='char',
-            size=32,
-            string='Telephone',
-            store={
-                'sample.request': (self_ids, ['partner_id', 'contact_id', 'lead_id', 'ship_to_id'], 10),
-                'res.partner': (_changed_res_partner_phone_ids, ['phone'], 20),
-                },
-            ),
+        'phone': fields.char(string='Telephone', size=32),
         'ship_to_id': fields.many2one('res.partner', 'Ship To', track_visiblility='onchange'),
         'request_type': fields.selection(
             [('customer', 'Existing Customer'), ('lead', 'New Customer')],
