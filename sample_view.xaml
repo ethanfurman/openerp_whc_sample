@@ -236,7 +236,7 @@
         ~menuitem @Samples sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
         ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
-        ~menuitem @Ship_Via sequence='35' parent='sample_sub' action='sample_ship_via_action' #menu_sample_ship_via
+        ~menuitem name='Ship Via' sequence='35' parent='sample_sub' action='sample_ship_via_action' #menu_sample_ship_via
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
         ~menuitem name='Custom Labels' sequence='99' parent='sample_sub' #menu_sample_label action='sample_label_action'
 
