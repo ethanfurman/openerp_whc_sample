@@ -59,7 +59,7 @@ Tables
 
 # imports
 from fnx.oe import Proposed, MergeSelected
-from openerp import SUPERUSER_ID
+from openerp import SUPERUSER_ID, VAR_DIR
 from openerp.osv import fields, osv
 from openerp.exceptions import ERPError
 from openerp.tools import DEFAULT_SERVER_DATE_FORMAT, self_ids, self_uid
@@ -286,13 +286,10 @@ class sample_request(osv.Model):
         context['sample_loop'] = True
         if isinstance(ids, (int, long)):
             ids = [ids]
-        labels = self._generate_labels(cr, uid, ids, context=context)
         values = {
             'state': 'complete',
-            'lot_labels': '\f'.join(labels),
             }
         self.write(cr, uid, ids, values, context=context)
-        self.button_sample_reprint(cr, uid, ids, context=context)
         return True
 
     def button_sample_reprint(self, cr, uid, ids, context=None):
@@ -372,10 +369,10 @@ class sample_request(osv.Model):
                 self.write(cr, uid, [sample.id], {'lot_labels': lot_labels}, context=context)
             ref_num = sample.ref_num
             # generate plain-text version
-            with open('/opt/openerp/var/sample_labels/%s.txt' % ref_num, 'w') as label:
+            with open('%s/sample_labels/%s.txt' % (VAR_DIR, ref_num), 'w') as label:
                 label.write(lot_labels)
             # generate backup plain-text version for troubleshooting
-            with open('/opt/openerp/var/sample_labels/%s.src' % ref_num, 'w') as label:
+            with open('%s/sample_labels/%s.src' % (VAR_DIR, ref_num), 'w') as label:
                 label.write(lot_labels)
             # generate custom Okidata version
             label_data = [
@@ -387,7 +384,7 @@ class sample_request(osv.Model):
                 for lbl in label_data
                 ]
             labels = header + ('{ff}'+'{lf}'*5).join(labels)
-            with open('/opt/openerp/var/sample_labels/%s.prn' % ref_num, 'w') as label:
+            with open('%s/sample_labels/%s.prn' % (VAR_DIR, ref_num), 'w') as label:
                 label.write(Oki380().transform(labels))
         return True
 
@@ -395,11 +392,14 @@ class sample_request(osv.Model):
         context = (context or {}).copy()
         context['sample_loop'] = True
         user = self.pool.get('res.users').browse(cr, uid, uid, context=context)
+        labels = self._generate_labels(cr, uid, ids, context=context)
         values = {
                 'state': 'production',
                 'submit_datetime': fields.date.context_today(self, cr, uid, context=context),
+                'lot_labels': '\f'.join(labels),
                 }
         follower_ids = [u.partner_id.id for u in user.company_id.sample_request_followers_ids]
+        self.button_sample_reprint(cr, uid, ids, context=context)
         if follower_ids:
             self.message_subscribe(cr, uid, ids, follower_ids, context=context)
         return self.write(cr, uid, ids, values, context=context)
@@ -772,6 +772,6 @@ class sample_label(osv.Model):
     def button_label_print(self, cr, uid, ids, context=None):
         for label in self.browse(cr, uid, ids, context=context):
             text = ('%s\n%s\n%s\n%s' % (label.line1, label.line2, label.line3, label.line4))
-            with open('/opt/openerp/var/sample_labels/custom_label_%s-%s.raw' % (label.id, label.qty), 'w') as disk_label:
+            with open('%s/sample_labels/custom_label_%s-%s.raw' % (VAR_DIR, label.id, label.qty), 'w') as disk_label:
                 disk_label.write(text)
         return True

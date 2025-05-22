@@ -13,8 +13,8 @@
                 ~form $Sample_Request version='7.0' edit="[('is_historical','=',False),('state','!=','complete')]" setup='onload(user_id, contact_id, partner_id, ship_to_id, request_type, lead_id, lead_partner, lead_contact, context)'
                     ~header
                         ~button @button_sample_submit $Submit .oe_edit_hide type='object' attrs="{'invisible': ['|',('state','!=', 'draft'),('product_ids','=',[])]}"
+                        ~button @button_sample_reprint $Reprint_Labels .oe_edit_hide type='object' attrs="{'visible': [('state','in',['complete','production'])]}"
                         ~button @button_sample_complete $Done .oe_edit_hide type='object' attrs="{'invisible': [('state','!=','production')]}"
-                        ~button @button_sample_reprint $Reprint_Labels .oe_edit_hide type='object' attrs="{'invisible': [('state','!=','complete')]}"
                         @state widget='statusbar'
                     @id invisible='1'
                     @ref_num invisible='1'
