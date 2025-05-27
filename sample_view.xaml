@@ -121,7 +121,15 @@
             @search_view_id ref='sample_search_filter'
             @context: {'combine_company': False, 'search_default_type_owner': 1, 'search_default_type_draft': 1, 'search_default_type_active': 1}
 
-        ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sample_request_action'
+        ~record model=act_window #sales_sample_request_action
+            @name: Sample Request
+            @res_model: sample.request
+            @view_type: form
+            @view_mode: tree,form
+            @search_view_id ref='sample_search_filter'
+            @context: {'combine_company': False, 'search_default_type_owner': 1, 'search_default_type_draft': 1, 'search_default_type_active': 1}
+
+        ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sales_sample_request_action'
 
         ~menuitem @Samples sequence='99' parent='base.menu_base_config' groups='base.group_sale_manager' #menu_sample_config
 
@@ -234,7 +242,29 @@
         ~menuitem @Samples #sample_main
         ~menuitem @Samples sequence='10' parent='sample_main' #sample_sub
         ~menuitem @Samples sequence='10' parent='sample_sub' action='sample_request_action' #menu_sample_sample
-        ~menuitem @Customers sequence='20' parent='sample_sub' action='base.action_partner_customer_form' #menu_sample_customer
+
+        ~record id='action_partner_customer_form' model='ir.actions.act_window'
+            @name: Customers
+            @type: ir.actions.act_window
+            @res_model: res.partner
+            @view_type: form
+            @view_mode: tree,kanban,form
+            @domain: [('customer','=',1)]
+            @context: {'default_customer':1, 'search_default_customer':1, 'search_default_type_company':1}
+            @search_view_id ref="base.view_res_partner_filter"
+            @filter eval="True"
+            @help type="html"
+                ~p class="oe_view_nocontent_create"
+                    Click to add a customer contact in your address book.
+                ~p
+                    OpenERP helps you easily track all activities related to
+                    a customer: discussions, history of business opportunities,
+                    documents, etc.
+
+        ~record id='product.product_normal_action' model='ir.actions.act_window'
+            @view_mode: tree,kanban,form
+
+        ~menuitem @Customers sequence='20' parent='sample_sub' action='action_partner_customer_form' #menu_sample_customer
         ~menuitem @Products sequence='30' parent='sample_sub' action='product.product_normal_action' #menu_sample_product
         ~menuitem name='Ship Via' sequence='35' parent='sample_sub' action='sample_ship_via_action' #menu_sample_ship_via
         ~menuitem @Configuration sequence='40' parent='sample_main' #sample_sub_config
