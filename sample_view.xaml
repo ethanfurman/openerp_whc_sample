@@ -109,10 +109,11 @@
             @model: sample.request
             @arch type='xml'
                 ~search $Search_Sample_Request
+                    @ref_num $Sample_Number
+                    @product_ids $Product
                     @user_id $Sales_Person
                     @partner_id $Customer
                     @state $Request_Status
-                    @ref_num $Sample_Number
                     ~separator
                     ~filter $My_Requests @type_owner domain="[('user_id','=',uid)]" help="The samples I requested"
                     ~separator

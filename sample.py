@@ -790,6 +790,37 @@ class sample_product(osv.Model):
         'product_lot': fields.char('Lot #', size=24, oldname='product_lot_requested'),
         }
 
+    def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
+        if args is None:
+            args = []
+        args = args[:]
+        if name:
+            # get product ids that match
+            product_model = self.pool.get('product.product')
+            new_name = name + '%'
+            args.extend(['|',('xml_id','ilike',new_name),(self._rec_name,'ilike',new_name)])
+            product_ids = product_model.search(cr, uid, args, context=context)
+            products = dict([
+                (r['id'], '%s - %s' % (r['xml_id'],r['name']))
+                for r in product_model.read(
+                    cr, uid, product_ids,
+                    fields=['xml_id','name'],
+                    context=context,
+                    )])
+            # get sample.product ids that match
+            sample_products = [
+                    (r['id'], r['product_id'])
+                    for r in self.read(
+                        cr, uid,
+                        [('product_id','in',product_ids)],
+                        context=context,
+                        )]
+            for i, sp in enumerate(sample_products):
+                sample_products[i] = (sp[0], products[sp[1][0]])
+            return sample_products
+        else:
+            return super(sample_product, self).name_search(cr, uid, name, args, operator, context, limit)
+
 
 class sample_label(osv.Model):
 
