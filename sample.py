@@ -69,6 +69,14 @@ from printcap import Oki380
 
 _logger = logging.getLogger(__name__)
 
+shipping_urls = {
+        'fedex':  'https://www.fedex.com/apps/fedextrack/?tracknumbers=%s&cntry_code=us',
+        'ups':    'https://wwwapps.ups.com/WebTracking/track?track=yes&trackNums=%s',
+        'ontrac': 'https://www.ontrac.com/trackingres.asp?tracking_number=%s',
+        'dhl':    'http://webtrack.dhlglobalmail.com/?trackingnumber=%s',
+        'usps':   'https://tools.usps.com/go/TrackConfirmAction_input?origTrackNum=%s',
+        }
+
 # custom tables
 class sample_request(osv.Model):
     _name = 'sample.request'
@@ -194,6 +202,28 @@ class sample_request(osv.Model):
                 return data['phone']
         return False
 
+    def _get_tracking_url(self, cr, uid, ids, field_name, arg, context=None):
+        res = {}
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        for row in self.read(cr, uid, ids, fields=['id', 'actual_ship', 'tracking'], context=context):
+            id = row['id']
+            tracking_no = row['tracking']
+            shipper = row['actual_ship']
+            res[id] = {'tracking_url':False, 'tracking_no_url':False}
+            url = None
+            if shipper and tracking_no:
+                shipper = shipper[1]
+                for co, test_url in shipping_urls.items():
+                    if co in shipper.lower().replace(' ',''):
+                        url = test_url
+                        break
+            if url:
+                res[id]['tracking_url'] = '<a href="%s" target="_blank">%s</a>' % (url % tracking_no, tracking_no)
+            else:
+                res[id]['tracking_no_url'] = tracking_no
+        return res
+
     def _get_tree_contacts(self, cr, uid, ids, field_names, arg, context=None):
         if isinstance(ids, (int, long)):
             ids = [ids]
@@ -266,7 +296,22 @@ class sample_request(osv.Model):
         'address_type': fields.selection([('business', 'Commercial'), ('personal', 'Residential')], string='Address type', required=False, track_visibility='onchange'),
         'request_ship': fields.many2one('sample.shipping', string='Ship Via', required=False, track_visibility='onchange', ondelete='restrict'),
         'third_party_account': fields.char('3rd Party Account Number', size=64, track_visibility='onchange'),
-        'ship_date': fields.date('Date Shipped'),
+        'actual_ship': fields.many2one('sample.shipping', string='Actual Shipping Method', track_visibility='onchange', ondelete='restrict'),
+        'actual_ship_date': fields.date('Shipped on', track_visibility='onchange'),
+        'tracking': fields.char('Tracking #', size=32, track_visibility='onchange'),
+        'tracking_url': fields.function(
+            _get_tracking_url, type='char', size=256, string='Tracking # (link)',
+            multi='url',
+            store={'sample.request': (self_ids, ['actual_ship', 'tracking'], 10)},
+            ),
+        'tracking_no_url': fields.function(
+            _get_tracking_url, type='char', size=256, string='Tracking # (plain)',
+            multi='url',
+            store={'sample.request': (self_ids, ['actual_ship', 'tracking'], 10)},
+            ),
+        'shipping_cost': fields.float('Shipping Cost', track_visibility='onchange'),
+        'received_by': fields.char('Received by', size=32, track_visibility='onchange'),
+        'received_datetime': fields.datetime('Received when', track_visibility='onchange'),
         # products to sample
         'product_ids': fields.one2many('sample.product', 'request_id', string='Items', track_visibility='onchange'),
         'lot_labels': fields.text('Lot # labels'),

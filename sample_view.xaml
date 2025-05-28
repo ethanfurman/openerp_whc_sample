@@ -74,6 +74,20 @@
                             @instructions writeonly="groups('base.group_sale_salesman,sample.group_sample_user')"
                         ~group
                             @comments $Comments_to_customer
+                    ~hr
+                    ~group
+                        ~group
+                            @actual_ship
+                            @actual_ship_date
+                        ~group
+                            @shipping_cost widget='monetary' writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')"
+                            @tracking .oe_edit_only writeonly="groups('sample.group_sample_user,sample.group_sample_shipping')" attrs="{'readonly': [('actual_ship','=',False)]}"
+                            @tracking_url string='Tracking #' .oe_edit_hide widget='url' attrs="{'invisible': [('tracking_no_url','!=',False)]}"
+                            @tracking_no_url string='Tracking #' .oe_edit_hide attrs="{'invisible': [('tracking_no_url','=',False)]}"
+                        ~group
+                            @received_by writeonly="groups('base.group_sale_salesman,sample.group_sample_user,sample.group_sample_shipping')"
+                            @received_datetime writeonly="groups('base.group_sale_salesman,sample.group_sample_user,sample.group_sample_shipping')"
+                    ~hr
                     ~div .oe_chatter
                         @message_follower_ids widget='mail_followers'
                         @message_ids widget='mail_thread' nolabel='1'
