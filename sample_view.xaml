@@ -142,7 +142,7 @@
             @view_type: form
             @view_mode: tree,form
             @search_view_id ref='sample_search_filter'
-            @context: {'combine_company': False, 'search_default_type_owner': 1, 'search_default_type_draft': 1, 'search_default_type_active': 1}
+            @context: {'combine_company': False, 'search_default_type_owner': 1, 'search_default_type_draft': 1, 'search_default_type_complete': 0, 'search_default_type_active': 1}
 
         ~menuitem @Samples #menu_sales_sample parent='base.menu_sales' action='sales_sample_request_action'
 
